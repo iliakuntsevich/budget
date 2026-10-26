@@ -594,8 +594,8 @@ function renderStats(P){
     const free=Math.max(0,days>0?min:P.start);
     const perDay=days>0?free/days:free;
     html+=stat("Расходы до зарплаты",eur(spend),days===0?"зарплата сегодня":"до "+fmtDate(pay.date)+" · через "+days+" "+plural(days,"день","дня","дней"));
-    html+=stat("Останется к зарплате",eur(before),"на вечер "+fmtDate(days>0?addDays(pay.date,-1):TODAY),before<0,D()!=="BYN"?"≈ "+money(conv(before,D(),"BYN"),"BYN"):"");
     html+=stat("Обязательные до зарплаты",eur(must),"гибкие: "+eur(spend-must),false,D()!=="BYN"?"≈ "+money(conv(must,D(),"BYN"),"BYN"):"");
+    html+=stat("Останется к зарплате",eur(before),"на вечер "+fmtDate(days>0?addDays(pay.date,-1):TODAY),before<0,D()!=="BYN"?"≈ "+money(conv(before,D(),"BYN"),"BYN"):"");
   }
   let mn=Infinity,mnD=TODAY;for(const s of P.series)if(s.v<mn){mn=s.v;mnD=s.d}
   let pill;
