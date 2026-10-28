@@ -230,6 +230,11 @@ form.f .field input,form.f .field select{background:var(--surface)}
 .sheet .field input,.sheet .field select{background:var(--sunk)}
 .sheet-btns{display:flex;gap:8px;flex-wrap:wrap}
 .form-err{color:var(--danger);font-size:13px}
+.bk-diff{display:flex;justify-content:space-between;align-items:baseline;gap:6px 16px;flex-wrap:wrap;border-top:1px solid var(--line);margin-top:16px;padding-top:12px;font-size:13px}
+.bk-diff-l{font-size:15px;font-weight:600}
+.bk-diff b{font-size:17px;font-weight:600}
+.bk-diff b.pos{color:var(--income)}
+.bk-diff b.neg{color:var(--danger)}
 .rate-tile .btn.refresh{align-self:flex-start;margin-top:6px;font-size:12.5px;padding:3px 10px}
 .rate-msg{font-size:12px}
 .rate-msg.err{color:var(--danger)}
@@ -315,6 +320,7 @@ form.f .field input,form.f .field select{background:var(--surface)}
   <section class="panel">
     <div class="panel-head"><h2>Расходы по группам от зарплаты до зарплаты</h2><span class="muted" style="font-size:13px"><span id="bkRange"></span> · <span class="num" id="bkTotal"></span></span></div>
     <div class="breakdown" id="breakdown" style="margin-top:0"></div>
+    <div class="bk-diff" id="bkDiff"></div>
     <div class="hint" style="margin-top:12px">Период меняется вместе с месяцем, выбранным в календаре.</div>
   </section>
 
@@ -700,6 +706,10 @@ function renderBreakdown(){
   $("bkRange").textContent=fmtDate(from)+" — "+fmtDate(to);
   let bm=0;for(const e of evs)if(e.v<0&&e.status!=="skip"&&e.need==="must")bm-=e.v;
   $("bkTotal").textContent="всего "+eur(tot)+" · обязательные "+eur(bm)+" · гибкие "+eur(tot-bm);
+  const sal=evs.find(e=>e.type==="salary"&&e.date===from&&e.status!=="skip");
+  const salV=sal?sal.v:0,diff=salV-tot;
+  const code=v=>(v>0?"+":v<0?"−":"")+nf.format(Math.abs(Math.round(v*100)/100))+" "+D();
+  $("bkDiff").innerHTML=`<span class="bk-diff-l">Разница: <b class="num ${diff<0?"neg":"pos"}">${code(diff)}</b></span><span class="muted">зарплата ${nf.format(Math.round(salV*100)/100)} ${D()} − расходы ${nf.format(Math.round(tot*100)/100)} ${D()}</span>`;
   if(!rows.length){$("breakdown").innerHTML=`<div class="empty">Между этими зарплатами расходов пока нет.</div>`;return}
   const max=rows[0][1];
   $("breakdown").innerHTML=rows.map(([g,v])=>`<div class="bk"><span class="gtag" style="color:var(--ink)">${gdot(g)}${GNAME[g]}</span><span class="num">${eur(v)} <span class="muted">· ${Math.round(v/tot*100)}%</span></span><div class="bar"><i style="width:${(v/max*100).toFixed(1)}%;background:var(--g-${g})"></i></div></div>`).join("");
