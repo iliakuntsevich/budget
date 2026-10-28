@@ -230,6 +230,16 @@ form.f .field input,form.f .field select{background:var(--surface)}
 .sheet .field input,.sheet .field select{background:var(--sunk)}
 .sheet-btns{display:flex;gap:8px;flex-wrap:wrap}
 .form-err{color:var(--danger);font-size:13px}
+.day:not(.open) .chip.x3{display:none}
+.more-btn{display:none;white-space:nowrap;align-self:flex-start;border:0;background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:1px 7px;font:600 11px/1.5 var(--f-body);cursor:pointer;margin-top:1px}
+.more-btn.h3,.day.open .more-btn{display:inline-flex}
+.more-btn:hover{background:var(--accent);color:var(--surface)}
+.more-btn .m2{display:none}
+@media (max-width:700px){
+  .day:not(.open) .chip.x2{display:none}
+  .more-btn{display:inline-flex;font-size:10px;padding:0 5px}
+  .more-btn .m3,.more-btn .mt{display:none}.more-btn .m2{display:inline}
+}
 .tag.must{color:var(--accent);border-color:currentColor}
 .seg.need-seg{grid-template-columns:repeat(2,minmax(0,1fr))}
 .login-bg{z-index:60;background:var(--bg)}
@@ -451,7 +461,7 @@ function setDates(){
 }
 setDates();
 let selMonth=0;
-const ui={editAmt:null,day:null,dayOpener:null};
+const ui={editAmt:null,day:null,dayOpener:null,open:new Set()};
 
 function normalize(s){const d=defaults();s=s&&typeof s==="object"?JSON.parse(JSON.stringify(s)):{};
   const b=Object.assign({},d.balances,s.balances||{});delete b.card;delete b.cash;
@@ -664,10 +674,11 @@ function renderCal(P){
   for(let d=1;d<=dim(y,m);d++){
     const ds=ymd(new Date(y,m,d));const list=ev.filter(e=>e.date===ds);
     const pay=list.some(e=>e.type==="salary"&&e.status!=="skip");
-    const cls=["day",ds<TODAY?"past":"",ds===TODAY?"today":"",pay?"pay":""].join(" ");
-    const chips=list.map(e=>`<div class="chip ${e.amount>0?"in":""} ${e.status?"done":""}" title="${esc(e.name)}: ${moneyS(e.amount,e.cur)}">${gdot(e.amount<0?e.group:"income")}<span class="nm">${esc(e.name)}</span><span class="am num">${nf.format(Math.round(Math.abs(e.amount)))}${e.cur!==D()?`<span class="sym">${SYM[e.cur]}</span>`:""}</span></div>`).join("");
+    const open=ui.open.has(ds);
+    const cls=[open?"day open":"day",ds<TODAY?"past":"",ds===TODAY?"today":"",pay?"pay":""].join(" ");
+    const chips=list.map((e,i)=>`<div class="chip ${e.amount>0?"in":""} ${e.status?"done":""} ${i>=3?"x3":""} ${i>=2?"x2":""}" title="${esc(e.name)}: ${moneyS(e.amount,e.cur)}">${gdot(e.amount<0?e.group:"income")}<span class="nm">${esc(e.name)}</span><span class="am num">${nf.format(Math.round(Math.abs(e.amount)))}${e.cur!==D()?`<span class="sym">${SYM[e.cur]}</span>`:""}</span></div>`).join("");
     const eod=ds>=TODAY&&P.eod[ds]!=null?`<div class="eod ${P.eod[ds]<0?"neg":""}">${nf.format(Math.round(P.eod[ds]))}</div>`:"";
-    h+=`<div role="button" tabindex="0" class="${cls}" data-act="day" data-d="${ds}" aria-label="${fmtDate(ds)}: ${list.length?list.length+" "+plural(list.length,"запись","записи","записей"):"нет записей"}"><div class="dn"><span>${d}</span><button type="button" class="day-plus" data-act="day-plus" data-d="${ds}" aria-label="Добавить расход на ${fmtDate(ds)}" title="Добавить расход">+</button></div><div class="chips">${chips}</div>${eod}</div>`;
+    h+=`<div role="button" tabindex="0" class="${cls}" data-act="day" data-d="${ds}" aria-label="${fmtDate(ds)}: ${list.length?list.length+" "+plural(list.length,"запись","записи","записей"):"нет записей"}"><div class="dn"><span>${d}</span><button type="button" class="day-plus" data-act="day-plus" data-d="${ds}" aria-label="Добавить расход на ${fmtDate(ds)}" title="Добавить расход">+</button></div><div class="chips">${chips}</div>${list.length>2?`<button type="button" class="more-btn ${list.length>3?"h3":""}" data-act="day-more" data-d="${ds}" aria-expanded="${open}">${open?`▴<span class="mt"> свернуть</span>`:`▾<span class="mt"> ещё</span> <span class="m3">${list.length-3}</span><span class="m2">${list.length-2}</span>`}</button>`:""}${eod}</div>`;
   }
   $("cal").innerHTML=h;
 }
@@ -755,6 +766,8 @@ document.addEventListener("click",ev=>{
       mutate(s=>{if(isRec){s.recurring=s.recurring.filter(x=>x.id!==ed.id);for(const key of Object.keys(s.overrides))if(key.startsWith(ed.id+"@"))delete s.overrides[key]}else s.oneoff=s.oneoff.filter(x=>x.id!==ed.id)});break}
     case"day":openDay(b.dataset.d);break;
     case"day-plus":openAdd({type:"one",date:b.dataset.d});break;
+    case"day-more":{const d=b.dataset.d;if(ui.open.has(d))ui.open.delete(d);else ui.open.add(d);renderCal(project());
+      const nb=document.querySelector(`.more-btn[data-d="${d}"]`);nb&&nb.focus({preventScroll:true});break}
     case"refresh":refresh();break;
     case"row":openRow(k);break;
     case"close-day":closeDay();break;
