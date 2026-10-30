@@ -205,7 +205,7 @@ form.f .field input,form.f .field select{background:var(--surface)}
 .panel-add:hover{border-color:var(--accent);background:var(--accent-soft)}
 
 /* breakdown */
-.breakdown{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 28px;margin-top:18px}
+.breakdown{display:grid;grid-template-columns:1fr;gap:8px;margin-top:18px}
 @media (max-width:620px){.breakdown{grid-template-columns:1fr}}
 .bk{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;font-size:13.5px}
 .bk .bar{grid-column:1/-1;height:6px;background:var(--sunk);border-radius:3px;overflow:hidden}
@@ -230,6 +230,22 @@ form.f .field input,form.f .field select{background:var(--surface)}
 .sheet .field input,.sheet .field select{background:var(--sunk)}
 .sheet-btns{display:flex;gap:8px;flex-wrap:wrap}
 .form-err{color:var(--danger);font-size:13px}
+.duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:860px){.duo{grid-template-columns:1fr}}
+.task-add{display:flex;gap:8px}
+.task-add input{flex:1;min-width:0;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:9px 10px}
+.task-list{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column}
+.task{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.task:last-child{border-bottom:0}
+.task-check{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);background:var(--surface);padding:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:transparent;font-size:12px;line-height:1}
+.task-check:hover{border-color:var(--income);color:var(--income)}
+.task-title{border:0;background:none;padding:2px 0;text-align:left;cursor:text;overflow-wrap:anywhere;font-size:14.5px;color:var(--ink)}
+.task-title:hover{color:var(--accent)}
+.task-edit{width:100%;background:var(--sunk);border:1px solid var(--accent);border-radius:6px;padding:5px 8px}
+.task-del{border:0;background:none;color:var(--muted);font-size:16px;cursor:pointer;padding:2px 6px;border-radius:6px;opacity:.6}
+.task:hover .task-del,.task-del:focus-visible{opacity:1}
+.task-del:hover{color:var(--danger);background:var(--danger-soft)}
+.task-undo{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;background:var(--income-soft);border-radius:8px;padding:8px 12px;font-size:13.5px}
 .bk-diff{display:flex;justify-content:space-between;align-items:baseline;gap:6px 16px;flex-wrap:wrap;border-top:1px solid var(--line);margin-top:16px;padding-top:12px;font-size:13px}
 .bk-diff-l{font-size:15px;font-weight:600}
 .bk-diff b{font-size:17px;font-weight:600}
@@ -317,12 +333,24 @@ form.f .field input,form.f .field select{background:var(--surface)}
   </section>
 
 
+  <div class="duo">
   <section class="panel">
     <div class="panel-head"><h2>Расходы по группам от зарплаты до зарплаты</h2><span class="muted" style="font-size:13px"><span id="bkRange"></span> · <span class="num" id="bkTotal"></span></span></div>
     <div class="breakdown" id="breakdown" style="margin-top:0"></div>
     <div class="bk-diff" id="bkDiff"></div>
     <div class="hint" style="margin-top:12px">Период меняется вместе с месяцем, выбранным в календаре.</div>
   </section>
+
+  <section class="panel tasks-panel">
+    <div class="panel-head"><h2>Задачи</h2><span class="muted num" style="font-size:13px" id="taskCount"></span></div>
+    <form class="task-add" id="taskForm" autocomplete="off">
+      <input id="taskInput" placeholder="Новая задача" aria-label="Новая задача" maxlength="300">
+      <button class="btn primary" type="submit">Добавить</button>
+    </form>
+    <ul class="task-list" id="taskList"></ul>
+    <div class="task-undo" id="taskUndo" hidden></div>
+  </section>
+  </div>
 
   <section class="panel">
     <div class="panel-head"><h2>Календарь</h2><div class="tabs" id="tabs" role="tablist"></div></div>
@@ -470,14 +498,15 @@ function setDates(){
 }
 setDates();
 let selMonth=0;
-const ui={editAmt:null,day:null,dayOpener:null,open:new Set()};
+const ui={editAmt:null,day:null,dayOpener:null,open:new Set(),taskEdit:null,undo:null};
 
 function normalize(s){const d=defaults();s=s&&typeof s==="object"?JSON.parse(JSON.stringify(s)):{};
   const b=Object.assign({},d.balances,s.balances||{});delete b.card;delete b.cash;
   return{v:2,display:curOf(s.display||d.display),rates:Object.assign(d.rates,s.rates||{}),
     salary:Object.assign(d.salary,s.salary||{}),balances:b,
     recurring:Array.isArray(s.recurring)?s.recurring:[],oneoff:Array.isArray(s.oneoff)?s.oneoff:[],
-    overrides:s.overrides&&typeof s.overrides==="object"?s.overrides:{}}}
+    overrides:s.overrides&&typeof s.overrides==="object"?s.overrides:{},
+    tasks:Array.isArray(s.tasks)?s.tasks.filter(t=>t&&t.id&&typeof t.title==="string"):[]}}
 
 /* ---------- storage: Supabase, one row per record ---------- */
 const CFG=window.BUDGET_CONFIG||{};
@@ -489,14 +518,16 @@ function toRows(s){const r={settings:{display:s.display,salary:s.salary,balances
   for(const x of s.recurring)r["rec:"+x.id]=x;
   for(const x of s.oneoff)r["one:"+x.id]=x;
   for(const k in s.overrides)r["ov:"+k]=s.overrides[k];
+  for(const t of s.tasks||[])r["task:"+t.id]=t;
   return r}
-function fromRows(rows){const s={recurring:[],oneoff:[],overrides:{}};
+function fromRows(rows){const s={recurring:[],oneoff:[],overrides:{},tasks:[]};
   for(const id in rows){const d=rows[id];
     if(id==="settings")Object.assign(s,{display:d.display,salary:d.salary,balances:d.balances});
     else if(id==="rates")s.rates=d;
     else if(id.startsWith("rec:"))s.recurring.push(d);
     else if(id.startsWith("one:"))s.oneoff.push(d);
-    else if(id.startsWith("ov:"))s.overrides[id.slice(3)]=d}
+    else if(id.startsWith("ov:"))s.overrides[id.slice(3)]=d;
+    else if(id.startsWith("task:"))s.tasks.push(d)}
   return normalize(s)}
 function persist(){
   if(online){setSave("Сохраняю…");clearTimeout(timer);timer=setTimeout(flush,450)}
@@ -592,7 +623,7 @@ function render(){
   const P=project();
   const t=parse(TODAY);
   $("todayLine").textContent="Сегодня "+t.getDate()+" "+MONTHS_G[t.getMonth()]+", "+WD_LONG[t.getDay()]+". План до конца "+MONTHS_G[monthsShown[2].m]+". Итоги в "+D();
-  renderWallet(P);renderStats(P);renderTabs();renderCal(P);renderBreakdown();renderAgenda(P);renderDay(P);
+  renderWallet(P);renderStats(P);renderTabs();renderCal(P);renderBreakdown();renderTasks();renderAgenda(P);renderDay(P);
   const hasEx=state.recurring.some(r=>r.example)||state.oneoff.some(e=>e.example)||state.balances.example;
   $("exampleBanner").hidden=!hasEx;
 }
@@ -696,6 +727,29 @@ function payPeriod(i){
   const {y,m}=monthsShown[i];const n=new Date(y,m+1,1);
   return[salaryDate(y,m),addDays(salaryDate(n.getFullYear(),n.getMonth()),-1)];
 }
+function renderTasks(){
+  const list=$("taskList");
+  if(list.contains(document.activeElement)&&document.activeElement.classList.contains("task-edit"))return;
+  const ts=(state.tasks||[]).slice().sort((a,b)=>(a.created||0)-(b.created||0));
+  $("taskCount").textContent=ts.length?ts.length+" "+plural(ts.length,"задача","задачи","задач"):"";
+  list.innerHTML=ts.length?ts.map(t=>`<li class="task" data-id="${esc(t.id)}">
+    <button type="button" class="task-check" data-act="task-done" data-id="${esc(t.id)}" aria-label="Выполнено: ${esc(t.title)}" title="Отметить выполненной">✓</button>
+    ${ui.taskEdit===t.id?`<input class="task-edit" data-id="${esc(t.id)}" value="${esc(t.title)}" maxlength="300" aria-label="Изменить задачу">`:`<button type="button" class="task-title" data-act="task-edit" data-id="${esc(t.id)}" title="Нажмите, чтобы изменить">${esc(t.title)}</button>`}
+    <button type="button" class="task-del" data-act="task-del" data-id="${esc(t.id)}" aria-label="Удалить задачу" title="Удалить">✕</button></li>`).join(""):`<li class="empty">Задач нет. Впишите первую в поле выше.</li>`;
+  const u=ui.undo;$("taskUndo").hidden=!u;
+  if(u)$("taskUndo").innerHTML=`<span>${u.kind==="done"?"Выполнено":"Удалено"}: «${esc(u.task.title.length>40?u.task.title.slice(0,40)+"…":u.task.title)}»</span><button type="button" class="linkbtn" data-act="task-undo">Вернуть</button>`;
+}
+function taskRemove(id,kind){
+  const t=state.tasks.find(x=>x.id===id);if(!t)return;
+  clearTimeout(ui.undoTimer);ui.undo={task:Object.assign({},t),kind};
+  ui.undoTimer=setTimeout(()=>{ui.undo=null;renderTasks()},6000);
+  mutate(s=>{s.tasks=s.tasks.filter(x=>x.id!==id)});
+}
+function taskSave(inp){
+  const id=inp.dataset.id,v=inp.value.trim();ui.taskEdit=null;
+  if(!v){taskRemove(id,"del");return}
+  mutate(s=>{const t=s.tasks.find(x=>x.id===id);if(t&&t.title!==v)t.title=v});
+}
 function renderBreakdown(){
   const {y,m}=monthsShown[selMonth];const n=new Date(y,m+1,1);
   const [from,to]=payPeriod(selMonth);
@@ -783,6 +837,10 @@ document.addEventListener("click",ev=>{
     case"day-more":{const d=b.dataset.d;if(ui.open.has(d))ui.open.delete(d);else ui.open.add(d);renderCal(project());
       const nb=document.querySelector(`.more-btn[data-d="${d}"]`);nb&&nb.focus({preventScroll:true});break}
     case"refresh":refresh();break;
+    case"task-done":taskRemove(id,"done");break;
+    case"task-del":taskRemove(id,"del");break;
+    case"task-edit":ui.taskEdit=id;renderTasks();{const i=document.querySelector(".task-edit");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}break;
+    case"task-undo":{const u=ui.undo;if(!u)break;clearTimeout(ui.undoTimer);ui.undo=null;mutate(s=>{if(!s.tasks.some(x=>x.id===u.task.id))s.tasks.push(u.task)});break}
     case"row":openRow(k);break;
     case"close-day":closeDay();break;
     case"day-prev":case"day-next":{const n=addDays(ui.day,a==="day-prev"?-1:1);if(n<ymd(new Date(curY,curM,1))||n>HORIZON_END)break;ui.day=n;ui.editAmt=null;
@@ -931,6 +989,17 @@ async function refresh(){
   ui.rateMsg=ok?"проверено в "+pad(t.getHours())+":"+pad(t.getMinutes()):"не удалось связаться с НБРБ, курс прежний";
   render();
 }
+$("taskForm").addEventListener("submit",ev=>{ev.preventDefault();
+  const v=$("taskInput").value.trim();if(!v)return;
+  mutate(s=>{s.tasks.push({id:uid(),title:v,created:Date.now()})});
+  $("taskInput").value="";$("taskInput").focus();
+});
+$("taskList").addEventListener("keydown",ev=>{
+  if(!ev.target.classList.contains("task-edit"))return;
+  if(ev.key==="Enter"){ev.preventDefault();taskSave(ev.target)}
+  else if(ev.key==="Escape"){ev.preventDefault();ev.stopPropagation();ui.taskEdit=null;renderTasks()}
+});
+$("taskList").addEventListener("focusout",ev=>{if(ev.target.classList.contains("task-edit")&&ui.taskEdit===ev.target.dataset.id)taskSave(ev.target)});
 /* ---------- login & boot ---------- */
 async function startOnline(session){
   $("loginBg").hidden=true;$("who").textContent=session.user.email;$("whoWrap").hidden=false;
