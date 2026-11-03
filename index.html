@@ -242,6 +242,8 @@ form.f .field input,form.f .field select{background:var(--surface)}
 .task:last-child{border-bottom:0}
 .task-check{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);background:var(--surface);padding:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:transparent;font-size:12px;line-height:1}
 .task-check:hover{border-color:var(--income);color:var(--income)}
+.task.is-done .task-check{background:var(--income);border-color:var(--income);color:var(--surface)}
+.task.is-done .task-title{text-decoration:line-through;color:var(--muted)}
 .task-title{border:0;background:none;padding:2px 0;text-align:left;cursor:text;overflow-wrap:anywhere;font-size:14.5px;color:var(--ink)}
 .task-title:hover{color:var(--accent)}
 .task-edit{width:100%;background:var(--sunk);border:1px solid var(--accent);border-radius:6px;padding:5px 8px}
@@ -351,7 +353,6 @@ form.f .field input,form.f .field select{background:var(--surface)}
       <button class="btn primary" type="submit">Добавить</button>
     </form>
     <ul class="task-list" id="taskList"></ul>
-    <div class="task-undo" id="taskUndo" hidden></div>
   </section>
   </div>
 
@@ -733,24 +734,24 @@ function payPeriod(i){
 function renderTasks(){
   const list=$("taskList");
   if(list.contains(document.activeElement)&&document.activeElement.classList.contains("task-edit"))return;
-  const ts=(state.tasks||[]).slice().sort((a,b)=>(a.created||0)-(b.created||0));
-  $("taskCount").textContent=ts.length?ts.length+" "+plural(ts.length,"задача","задачи","задач"):"";
-  list.innerHTML=ts.length?ts.map(t=>`<li class="task" data-id="${esc(t.id)}">
-    <button type="button" class="task-check" data-act="task-done" data-id="${esc(t.id)}" aria-label="Выполнено: ${esc(t.title)}" title="Отметить выполненной">✓</button>
+  const all=state.tasks||[];
+  const act=all.filter(t=>!t.done).sort((a,b)=>(a.created||0)-(b.created||0));
+  const dn=all.filter(t=>t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
+  $("taskCount").textContent=act.length?act.length+" "+plural(act.length,"задача","задачи","задач")+(dn.length?" · "+dn.length+" выполн.":""):(dn.length?"все выполнены":"");
+  const row=t=>`<li class="task ${t.done?"is-done":""}" data-id="${esc(t.id)}">
+    <button type="button" class="task-check" data-act="task-done" data-id="${esc(t.id)}" aria-pressed="${!!t.done}" aria-label="${t.done?"Вернуть в работу":"Выполнено"}: ${esc(t.title)}" title="${t.done?"Вернуть в работу":"Отметить выполненной"}">✓</button>
     ${ui.taskEdit===t.id?`<input class="task-edit" data-id="${esc(t.id)}" value="${esc(t.title)}" maxlength="300" aria-label="Изменить задачу">`:`<button type="button" class="task-title" data-act="task-edit" data-id="${esc(t.id)}" title="Нажмите, чтобы изменить">${esc(t.title)}</button>`}
-    <button type="button" class="task-del" data-act="task-del" data-id="${esc(t.id)}" aria-label="Удалить задачу" title="Удалить">✕</button></li>`).join(""):`<li class="empty">Задач нет. Впишите первую в поле выше.</li>`;
-  const u=ui.undo;$("taskUndo").hidden=!u;
-  if(u)$("taskUndo").innerHTML=`<span>${u.kind==="done"?"Выполнено":"Удалено"}: «${esc(u.task.title.length>40?u.task.title.slice(0,40)+"…":u.task.title)}»</span><button type="button" class="linkbtn" data-act="task-undo">Вернуть</button>`;
+    <button type="button" class="task-del" data-act="task-del" data-id="${esc(t.id)}" aria-label="Удалить задачу" title="Удалить">✕</button></li>`;
+  list.innerHTML=all.length?act.map(row).join("")+dn.map(row).join(""):`<li class="empty">Задач нет. Впишите первую в поле выше.</li>`;
 }
-function taskRemove(id,kind){
-  const t=state.tasks.find(x=>x.id===id);if(!t)return;
-  clearTimeout(ui.undoTimer);ui.undo={task:Object.assign({},t),kind};
-  ui.undoTimer=setTimeout(()=>{ui.undo=null;renderTasks()},6000);
-  mutate(s=>{s.tasks=s.tasks.filter(x=>x.id!==id)});
+function taskToggle(id){
+  mutate(s=>{const t=s.tasks.find(x=>x.id===id);if(!t)return;
+    if(t.done){delete t.done;delete t.doneAt}else{t.done=true;t.doneAt=Date.now()}});
 }
+function taskRemove(id){mutate(s=>{s.tasks=s.tasks.filter(x=>x.id!==id)})}
 function taskSave(inp){
   const id=inp.dataset.id,v=inp.value.trim();ui.taskEdit=null;
-  if(!v){taskRemove(id,"del");return}
+  if(!v){taskRemove(id);return}
   mutate(s=>{const t=s.tasks.find(x=>x.id===id);if(t&&t.title!==v)t.title=v});
 }
 function renderBreakdown(){
@@ -840,10 +841,9 @@ document.addEventListener("click",ev=>{
     case"day-more":{const d=b.dataset.d;if(ui.open.has(d))ui.open.delete(d);else ui.open.add(d);renderCal(project());
       const nb=document.querySelector(`.more-btn[data-d="${d}"]`);nb&&nb.focus({preventScroll:true});break}
     case"refresh":refresh();break;
-    case"task-done":taskRemove(id,"done");break;
-    case"task-del":taskRemove(id,"del");break;
+    case"task-done":taskToggle(id);break;
+    case"task-del":taskRemove(id);break;
     case"task-edit":ui.taskEdit=id;renderTasks();{const i=document.querySelector(".task-edit");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}break;
-    case"task-undo":{const u=ui.undo;if(!u)break;clearTimeout(ui.undoTimer);ui.undo=null;mutate(s=>{if(!s.tasks.some(x=>x.id===u.task.id))s.tasks.push(u.task)});break}
     case"row":openRow(k);break;
     case"close-day":closeDay();break;
     case"day-prev":case"day-next":{const n=addDays(ui.day,a==="day-prev"?-1:1);if(n<ymd(new Date(curY,curM,1))||n>HORIZON_END)break;ui.day=n;ui.editAmt=null;
