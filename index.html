@@ -1080,12 +1080,12 @@ $("taskList").addEventListener("focusout",ev=>{if(ev.target.classList.contains("
 /* ---------- map ---------- */
 const HAS_L=typeof window.L!=="undefined";
 const MINSK=[53.9023,27.5619];
-const TILE="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
-const TILE_ATTR='© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> © <a href="https://carto.com/attributions" target="_blank">CARTO</a>';
+const TILE="https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const TILE_ATTR='© <a href="https://www.openstreetmap.org/copyright" target="_blank">участники OpenStreetMap</a>';
 let MAP=null,MLAYER=null,MARK={},ME=null,mapFitted=false,mapSig="";
 function mkMap(el,opts){const m=L.map(el,Object.assign({zoomControl:true,attributionControl:true},opts||{})).setView(MINSK,11);
   m.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank">Leaflet</a>');
-  L.tileLayer(TILE,{attribution:TILE_ATTR,maxZoom:19,subdomains:"abcd"}).addTo(m);return m}
+  L.tileLayer(TILE,{attribution:TILE_ATTR,maxZoom:19}).addTo(m);return m}
 function pinIcon(n,sel){return L.divIcon({className:"",html:`<div class="pin ${sel?"sel":""}"><span>${n}</span></div>`,iconSize:[28,28],iconAnchor:[14,30],popupAnchor:[0,-28]})}
 function gmapsUrl(p){return "https://www.google.com/maps/dir/?api=1&destination="+p.lat.toFixed(6)+","+p.lng.toFixed(6)}
 function renderMap(){
