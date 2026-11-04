@@ -242,8 +242,8 @@ form.f .field input,form.f .field select{background:var(--surface)}
 .task-pin.has{color:var(--accent)}
 .task-pin:hover{background:var(--accent-soft);color:var(--accent)}
 .map-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}
-.task-map{height:380px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--sunk);z-index:0}
-@media (max-width:700px){.task-map{height:300px}}
+.task-map{border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--sunk);z-index:0}
+@media (max-width:700px){.map-panel .task-map{min-height:300px}}
 .pin{width:28px;height:28px;border-radius:50% 50% 50% 0;background:var(--accent);transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.35);border:2px solid #fff}
 .pin span{transform:rotate(45deg);color:#fff;font:700 12px/1 var(--f-body)}
 .pin.sel{background:var(--warn)}
@@ -263,7 +263,8 @@ form.f .field input,form.f .field select{background:var(--surface)}
 .pl-results button:hover{border-color:var(--accent);background:var(--accent-soft)}
 .pl-map{height:220px;border-radius:8px;overflow:hidden;border:1px solid var(--line);z-index:0}
 .duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:stretch}
-.duo>.panel:first-child{align-self:start}
+.map-panel{display:flex;flex-direction:column}
+.map-panel .task-map{flex:1 1 auto;min-height:380px}
 .tasks-panel{display:flex;flex-direction:column;min-height:0}
 .tasks-panel .task-list{flex:1 1 0;min-height:220px;overflow-y:auto;overscroll-behavior:contain;padding-right:4px;scrollbar-width:thin}
 @media (max-width:860px){.duo{grid-template-columns:1fr}.tasks-panel .task-list{flex:none;max-height:360px;min-height:0}}
@@ -373,13 +374,6 @@ form.f .field input,form.f .field select{background:var(--surface)}
 
 
   <div class="duo">
-  <section class="panel">
-    <div class="panel-head"><h2>Расходы по группам от зарплаты до зарплаты</h2><span class="muted" style="font-size:13px"><span id="bkRange"></span> · <span class="num" id="bkTotal"></span></span></div>
-    <div class="breakdown" id="breakdown" style="margin-top:0"></div>
-    <div class="bk-diff" id="bkDiff"></div>
-    <div class="hint" style="margin-top:12px">Период меняется вместе с месяцем, выбранным в календаре.</div>
-  </section>
-
   <section class="panel tasks-panel">
     <div class="panel-head"><h2>Задачи</h2><span class="muted num" style="font-size:13px" id="taskCount"></span></div>
     <form class="task-add" id="taskForm" autocomplete="off">
@@ -389,7 +383,6 @@ form.f .field input,form.f .field select{background:var(--surface)}
     </form>
     <ul class="task-list" id="taskList"></ul>
   </section>
-  </div>
 
   <section class="panel map-panel">
     <div class="panel-head"><h2>Карта задач</h2>
@@ -397,14 +390,23 @@ form.f .field input,form.f .field select{background:var(--surface)}
         <button type="button" class="btn" data-act="map-me">◎ Где я</button>
         <button type="button" class="btn" data-act="map-fit">Все метки</button></div></div>
     <div id="taskMap" class="task-map" role="region" aria-label="Карта задач"></div>
-    <div class="hint">На карте — невыполненные задачи, у которых указано место. Нажмите на метку, чтобы построить маршрут в Google Maps или отметить задачу выполненной. Место задаётся кнопкой «Место» при добавлении или значком метки в списке задач.</div>
+    <div class="hint">Невыполненные задачи с местом. Нажмите на метку: маршрут в Google Maps или «Выполнено».</div>
   </section>
+  </div>
+
 
   <section class="panel">
     <div class="panel-head"><h2>Календарь</h2><div class="tabs" id="tabs" role="tablist"></div></div>
     <div class="cal" id="cal"></div>
     <div class="hint">Внизу каждого дня — прогноз остатка на конец дня. Нажмите на день, чтобы посмотреть его расходы, изменить их или добавить новый.</div>
     <div class="agenda" id="agenda"></div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Расходы по группам от зарплаты до зарплаты</h2><span class="muted" style="font-size:13px"><span id="bkRange"></span> · <span class="num" id="bkTotal"></span></span></div>
+    <div class="breakdown" id="breakdown" style="margin-top:0"></div>
+    <div class="bk-diff" id="bkDiff"></div>
+    <div class="hint" style="margin-top:12px">Период меняется вместе с месяцем, выбранным в календаре.</div>
   </section>
 
 </div>
@@ -1090,7 +1092,7 @@ function pinIcon(n,sel){return L.divIcon({className:"",html:`<div class="pin ${s
 function gmapsUrl(p){return "https://www.google.com/maps/dir/?api=1&destination="+p.lat.toFixed(6)+","+p.lng.toFixed(6)}
 function renderMap(){
   if(!HAS_L)return;
-  if(!MAP){MAP=mkMap("taskMap",{scrollWheelZoom:false});MLAYER=L.layerGroup().addTo(MAP);MAP.on("focus",()=>MAP.scrollWheelZoom.enable());MAP.on("blur",()=>MAP.scrollWheelZoom.disable())}
+  if(!MAP){MAP=mkMap("taskMap",{scrollWheelZoom:false});if(window.ResizeObserver)new ResizeObserver(()=>MAP.invalidateSize()).observe($("taskMap"));MLAYER=L.layerGroup().addTo(MAP);MAP.on("focus",()=>MAP.scrollWheelZoom.enable());MAP.on("blur",()=>MAP.scrollWheelZoom.disable())}
   const act=(state.tasks||[]).filter(t=>!t.done&&t.place).sort((a,b)=>(a.created||0)-(b.created||0));
   const sig=JSON.stringify(act.map(t=>[t.id,t.title,t.place]));
   if(sig===mapSig)return;mapSig=sig;
