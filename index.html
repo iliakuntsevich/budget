@@ -230,6 +230,38 @@ form.f .field input,form.f .field select{background:var(--surface)}
 .sheet .field input,.sheet .field select{background:var(--sunk)}
 .sheet-btns{display:flex;gap:8px;flex-wrap:wrap}
 .form-err{color:var(--danger);font-size:13px}
+.place-btn{display:inline-flex;align-items:center;gap:5px;font-weight:600;color:var(--accent);padding:8px 10px}
+.task{grid-template-columns:auto minmax(0,1fr) auto auto!important}
+.task-body{display:flex;flex-direction:column;gap:2px;min-width:0}
+.task-place{display:inline-flex;align-items:center;gap:4px;border:0;background:none;padding:0;color:var(--muted);font-size:12.5px;text-align:left;cursor:pointer;min-width:0}
+.task-place span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.task-place:hover{color:var(--accent)}
+.task-place b{flex:none;background:var(--accent);color:var(--surface);border-radius:999px;font:600 10.5px/1 var(--f-body);padding:2px 5px}
+.task-pin{border:0;background:none;color:var(--muted);cursor:pointer;padding:3px 5px;border-radius:6px;display:inline-flex;opacity:.6}
+.task:hover .task-pin,.task-pin:focus-visible,.task-pin.has{opacity:1}
+.task-pin.has{color:var(--accent)}
+.task-pin:hover{background:var(--accent-soft);color:var(--accent)}
+.map-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}
+.task-map{height:380px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--sunk);z-index:0}
+@media (max-width:700px){.task-map{height:300px}}
+.pin{width:28px;height:28px;border-radius:50% 50% 50% 0;background:var(--accent);transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.35);border:2px solid #fff}
+.pin span{transform:rotate(45deg);color:#fff;font:700 12px/1 var(--f-body)}
+.pin.sel{background:var(--warn)}
+.me-dot{width:16px;height:16px;border-radius:50%;background:#2F7DF6;border:3px solid #fff;box-shadow:0 0 0 6px rgba(47,125,246,.25)}
+.leaflet-popup-content{font-family:var(--f-body);font-size:13.5px;margin:12px 14px;min-width:180px}
+.pop b{display:block;font-size:14.5px;margin-bottom:2px}
+.pop .ad{color:#5B6878;font-size:12.5px;margin-bottom:8px}
+.pop .row{display:flex;gap:6px;flex-wrap:wrap}
+.pop a,.pop button{font:600 12.5px var(--f-body);border-radius:7px;padding:5px 10px;text-decoration:none;cursor:pointer}
+.pop a{background:#0E6B66;color:#fff!important}
+.pop button{border:1px solid #D6DEE6;background:#fff;color:#152230}
+#placeBg{z-index:55}
+.pl-search{display:flex;gap:8px}
+.pl-search input{flex:1;min-width:0}
+.pl-results{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.pl-results button{width:100%;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 10px;font-size:13.5px;cursor:pointer}
+.pl-results button:hover{border-color:var(--accent);background:var(--accent-soft)}
+.pl-map{height:220px;border-radius:8px;overflow:hidden;border:1px solid var(--line);z-index:0}
 .duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:stretch}
 .duo>.panel:first-child{align-self:start}
 .tasks-panel{display:flex;flex-direction:column;min-height:0}
@@ -301,6 +333,8 @@ form.f .field input,form.f .field select{background:var(--surface)}
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-size:14px}img{max-width:100%}</style>
 <script src="config.js"></script>
 <script src="supabase.js"></script>
+<link rel="stylesheet" href="leaflet.css">
+<script src="leaflet.js"></script>
 </head>
 <body>
 
@@ -350,11 +384,21 @@ form.f .field input,form.f .field select{background:var(--surface)}
     <div class="panel-head"><h2>Задачи</h2><span class="muted num" style="font-size:13px" id="taskCount"></span></div>
     <form class="task-add" id="taskForm" autocomplete="off">
       <input id="taskInput" placeholder="Новая задача" aria-label="Новая задача" maxlength="300">
+      <button class="btn place-btn" type="button" data-act="place-new" title="Добавить задачу с местом на карте" aria-label="Добавить с местом"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg><span>Место</span></button>
       <button class="btn primary" type="submit">Добавить</button>
     </form>
     <ul class="task-list" id="taskList"></ul>
   </section>
   </div>
+
+  <section class="panel map-panel">
+    <div class="panel-head"><h2>Карта задач</h2>
+      <div class="map-tools"><span class="muted" id="mapNote"></span>
+        <button type="button" class="btn" data-act="map-me">◎ Где я</button>
+        <button type="button" class="btn" data-act="map-fit">Все метки</button></div></div>
+    <div id="taskMap" class="task-map" role="region" aria-label="Карта задач"></div>
+    <div class="hint">На карте — невыполненные задачи, у которых указано место. Нажмите на метку, чтобы построить маршрут в Google Maps или отметить задачу выполненной. Место задаётся кнопкой «Место» при добавлении или значком метки в списке задач.</div>
+  </section>
 
   <section class="panel">
     <div class="panel-head"><h2>Календарь</h2><div class="tabs" id="tabs" role="tablist"></div></div>
@@ -372,6 +416,22 @@ form.f .field input,form.f .field select{background:var(--surface)}
     <label class="field"><span class="label">Пароль</span><input id="lgPass" type="password" autocomplete="current-password" required></label>
     <div class="form-err" id="lgErr" hidden></div>
     <button class="btn primary" type="submit" id="lgBtn">Войти</button>
+  </form>
+</div>
+
+<div class="sheet-bg" id="placeBg" hidden>
+  <form class="sheet" id="placeForm" role="dialog" aria-modal="true" aria-labelledby="plHead" autocomplete="off" novalidate>
+    <div class="sheet-head"><h2 id="plHead">Место для задачи</h2><button type="button" class="x" data-act="pl-close" aria-label="Закрыть">✕</button></div>
+    <label class="field" id="plTitleWrap"><span class="label">Задача</span><input id="plTitle" maxlength="300" placeholder="Что сделать"></label>
+    <div class="muted" id="plTitleText" style="font-size:14px"></div>
+    <div class="field"><span class="label">Адрес или название места</span>
+      <div class="pl-search"><input id="plQuery" placeholder="Например: Немига 5, Минск"><button type="button" class="btn" data-act="pl-find" id="plFind">Найти</button></div></div>
+    <ul class="pl-results" id="plResults"></ul>
+    <div class="pl-map" id="plMap"></div>
+    <div class="muted" style="font-size:13px" id="plChosen">Найдите адрес или нажмите на карте, чтобы поставить метку.</div>
+    <div class="form-err" id="plErr" hidden></div>
+    <div class="sheet-btns"><button class="btn primary" type="submit" id="plSave">Сохранить</button><button class="btn" type="button" data-act="pl-close">Отмена</button>
+      <button class="btn danger" type="button" data-act="pl-clear" id="plClear" style="margin-left:auto">Убрать место</button></div>
   </form>
 </div>
 
@@ -627,7 +687,7 @@ function render(){
   const P=project();
   const t=parse(TODAY);
   $("todayLine").textContent="Сегодня "+t.getDate()+" "+MONTHS_G[t.getMonth()]+", "+WD_LONG[t.getDay()]+". План до конца "+MONTHS_G[monthsShown[2].m]+". Итоги в "+D();
-  renderWallet(P);renderStats(P);renderTabs();renderCal(P);renderBreakdown();renderTasks();renderAgenda(P);renderDay(P);
+  renderWallet(P);renderStats(P);renderTabs();renderCal(P);renderBreakdown();renderTasks();renderMap();renderAgenda(P);renderDay(P);
   const hasEx=state.recurring.some(r=>r.example)||state.oneoff.some(e=>e.example)||state.balances.example;
   $("exampleBanner").hidden=!hasEx;
 }
@@ -731,16 +791,20 @@ function payPeriod(i){
   const {y,m}=monthsShown[i];const n=new Date(y,m+1,1);
   return[salaryDate(y,m),addDays(salaryDate(n.getFullYear(),n.getMonth()),-1)];
 }
+const PNUM={};
 function renderTasks(){
   const list=$("taskList");
   if(list.contains(document.activeElement)&&document.activeElement.classList.contains("task-edit"))return;
   const all=state.tasks||[];
   const act=all.filter(t=>!t.done).sort((a,b)=>(a.created||0)-(b.created||0));
   const dn=all.filter(t=>t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
+  for(const k in PNUM)delete PNUM[k];let pn=0;for(const t of act)if(t.place)PNUM[t.id]=++pn;
   $("taskCount").textContent=act.length?act.length+" "+plural(act.length,"задача","задачи","задач")+(dn.length?" · "+dn.length+" выполн.":""):(dn.length?"все выполнены":"");
   const row=t=>`<li class="task ${t.done?"is-done":""}" data-id="${esc(t.id)}">
     <button type="button" class="task-check" data-act="task-done" data-id="${esc(t.id)}" aria-pressed="${!!t.done}" aria-label="${t.done?"Вернуть в работу":"Выполнено"}: ${esc(t.title)}" title="${t.done?"Вернуть в работу":"Отметить выполненной"}">✓</button>
-    ${ui.taskEdit===t.id?`<input class="task-edit" data-id="${esc(t.id)}" value="${esc(t.title)}" maxlength="300" aria-label="Изменить задачу">`:`<button type="button" class="task-title" data-act="task-edit" data-id="${esc(t.id)}" title="Нажмите, чтобы изменить">${esc(t.title)}</button>`}
+    <div class="task-body">${ui.taskEdit===t.id?`<input class="task-edit" data-id="${esc(t.id)}" value="${esc(t.title)}" maxlength="300" aria-label="Изменить задачу">`:`<button type="button" class="task-title" data-act="task-edit" data-id="${esc(t.id)}" title="Нажмите, чтобы изменить">${esc(t.title)}</button>`}
+    ${t.place?`<button type="button" class="task-place" data-act="map-focus" data-id="${esc(t.id)}" title="Показать на карте">${!t.done&&PNUM[t.id]?`<b>${PNUM[t.id]}</b>`:`<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>`}<span>${esc(t.place.label||"точка на карте")}</span></button>`:""}</div>
+    <button type="button" class="task-pin ${t.place?"has":""}" data-act="place-edit" data-id="${esc(t.id)}" aria-label="${t.place?"Изменить место":"Указать место"}" title="${t.place?"Изменить место":"Указать место на карте"}"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg></button>
     <button type="button" class="task-del" data-act="task-del" data-id="${esc(t.id)}" aria-label="Удалить задачу" title="Удалить">✕</button></li>`;
   list.innerHTML=all.length?act.map(row).join("")+dn.map(row).join(""):`<li class="empty">Задач нет. Впишите первую в поле выше.</li>`;
 }
@@ -843,6 +907,15 @@ document.addEventListener("click",ev=>{
     case"refresh":refresh();break;
     case"task-done":taskToggle(id);break;
     case"task-del":taskRemove(id);break;
+    case"place-new":openPlace({title:$("taskInput").value.trim()});break;
+    case"place-edit":{const t=state.tasks.find(x=>x.id===id);if(t)openPlace({task:t});break}
+    case"pl-close":closePlace();break;
+    case"pl-find":plFind();break;
+    case"pl-pick":plPick(PL.results[+b.dataset.i]);break;
+    case"pl-clear":{const t=PL.task;closePlace();if(t)mutate(s=>{const x=s.tasks.find(z=>z.id===t.id);if(x)delete x.place});break}
+    case"map-focus":mapFocus(id);break;
+    case"map-fit":mapFit(true);break;
+    case"map-me":mapMe();break;
     case"task-edit":ui.taskEdit=id;renderTasks();{const i=document.querySelector(".task-edit");if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}}break;
     case"row":openRow(k);break;
     case"close-day":closeDay();break;
@@ -865,7 +938,7 @@ document.addEventListener("keydown",ev=>{
   if((ev.key==="Enter"||ev.key===" ")&&ev.target.matches&&ev.target.matches('.day[role="button"]')){ev.preventDefault();openDay(ev.target.dataset.d);return}
   if((ev.key==="Enter"||ev.key===" ")&&ev.target.matches&&ev.target.matches('.ag-row[role="button"]')){ev.preventDefault();openRow(ev.target.dataset.k);return}
   if(ev.key==="Enter"&&ev.target.classList&&ev.target.classList.contains("amt-input")){ev.preventDefault();ev.target.closest(".inline-edit").querySelector('[data-act="amt-save"]').click()}
-  if(ev.key==="Escape"){if(!$("sheetBg").hidden){closeAdd();return}if(ui.editAmt){ui.editAmt=null;render();return}if(ui.day){closeDay()}}
+  if(ev.key==="Escape"){if(!$("placeBg").hidden){closePlace();return}if(!$("sheetBg").hidden){closeAdd();return}if(ui.editAmt){ui.editAmt=null;render();return}if(ui.day){closeDay()}}
 });
 
 /* ---------- add / edit dialog ---------- */
@@ -1004,6 +1077,106 @@ $("taskList").addEventListener("keydown",ev=>{
   else if(ev.key==="Escape"){ev.preventDefault();ev.stopPropagation();ui.taskEdit=null;renderTasks()}
 });
 $("taskList").addEventListener("focusout",ev=>{if(ev.target.classList.contains("task-edit")&&ui.taskEdit===ev.target.dataset.id)taskSave(ev.target)});
+/* ---------- map ---------- */
+const HAS_L=typeof window.L!=="undefined";
+const MINSK=[53.9023,27.5619];
+const TILE="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+const TILE_ATTR='© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> © <a href="https://carto.com/attributions" target="_blank">CARTO</a>';
+let MAP=null,MLAYER=null,MARK={},ME=null,mapFitted=false,mapSig="";
+function mkMap(el,opts){const m=L.map(el,Object.assign({zoomControl:true,attributionControl:true},opts||{})).setView(MINSK,11);
+  m.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank">Leaflet</a>');
+  L.tileLayer(TILE,{attribution:TILE_ATTR,maxZoom:19,subdomains:"abcd"}).addTo(m);return m}
+function pinIcon(n,sel){return L.divIcon({className:"",html:`<div class="pin ${sel?"sel":""}"><span>${n}</span></div>`,iconSize:[28,28],iconAnchor:[14,30],popupAnchor:[0,-28]})}
+function gmapsUrl(p){return "https://www.google.com/maps/dir/?api=1&destination="+p.lat.toFixed(6)+","+p.lng.toFixed(6)}
+function renderMap(){
+  if(!HAS_L)return;
+  if(!MAP){MAP=mkMap("taskMap",{scrollWheelZoom:false});MLAYER=L.layerGroup().addTo(MAP);MAP.on("focus",()=>MAP.scrollWheelZoom.enable());MAP.on("blur",()=>MAP.scrollWheelZoom.disable())}
+  const act=(state.tasks||[]).filter(t=>!t.done&&t.place).sort((a,b)=>(a.created||0)-(b.created||0));
+  const sig=JSON.stringify(act.map(t=>[t.id,t.title,t.place]));
+  if(sig===mapSig)return;mapSig=sig;
+  MLAYER.clearLayers();MARK={};
+  act.forEach((t,i)=>{const m=L.marker([t.place.lat,t.place.lng],{icon:pinIcon(i+1),title:t.title,keyboard:true}).addTo(MLAYER);
+    m.bindPopup(`<div class="pop"><b>${i+1}. ${esc(t.title)}</b><div class="ad">${esc(t.place.label||"")}</div><div class="row"><a href="${gmapsUrl(t.place)}" target="_blank" rel="noopener">Маршрут в Google Maps</a><button type="button" data-act="task-done" data-id="${esc(t.id)}">✓ Выполнено</button></div></div>`);
+    MARK[t.id]=m});
+  $("mapNote").textContent=act.length?act.length+" "+plural(act.length,"метка","метки","меток"):"меток пока нет";
+  if(!mapFitted||ui.fitNext){mapFit(false);ui.fitNext=false;if(act.length)mapFitted=true}
+}
+function mapFit(user){
+  if(!MAP)return;const pts=Object.values(MARK).map(m=>m.getLatLng());if(ME&&user)pts.push(ME.getLatLng());
+  if(!pts.length){if(user)MAP.setView(MINSK,11);return}
+  if(pts.length===1)MAP.setView(pts[0],15);else MAP.fitBounds(L.latLngBounds(pts),{padding:[36,36],maxZoom:15});
+}
+function mapFocus(id){
+  const t=state.tasks.find(x=>x.id===id);if(!t||!t.place||!MAP)return;
+  $("taskMap").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"center"});
+  MAP.setView([t.place.lat,t.place.lng],16);const m=MARK[id];if(m)setTimeout(()=>m.openPopup(),250);
+}
+function mapMe(){
+  const note=$("mapNote");
+  if(!navigator.geolocation){note.textContent="браузер не даёт определить место";return}
+  note.textContent="определяю…";
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const ll=[pos.coords.latitude,pos.coords.longitude];
+    if(ME)ME.setLatLng(ll);else ME=L.marker(ll,{icon:L.divIcon({className:"",html:'<div class="me-dot"></div>',iconSize:[16,16],iconAnchor:[8,8]}),title:"Вы здесь",zIndexOffset:1000}).addTo(MAP);
+    mapSig="";renderMap();mapFit(true);
+  },err=>{note.textContent=err.code===1?"нет доступа к геолокации — разрешите в настройках браузера":"не удалось определить место"},{enableHighAccuracy:true,timeout:10000,maximumAge:60000});
+}
+/* place dialog */
+const PL={task:null,title:"",point:null,results:[],map:null,mk:null,opener:null};
+const shortLabel=d=>String(d||"").split(",").map(s=>s.trim()).filter(Boolean).slice(0,3).join(", ");
+function openPlace(o){
+  if(!HAS_L){alertMsg();return}
+  PL.task=o.task||null;PL.point=o.task&&o.task.place?Object.assign({},o.task.place):null;PL.results=[];PL.opener=document.activeElement;
+  $("plTitleWrap").hidden=!!PL.task;$("plTitleText").hidden=!PL.task;
+  $("plTitle").value=o.title||"";$("plTitleText").textContent=PL.task?PL.task.title:"";
+  $("plQuery").value=PL.point?PL.point.label||"":"";$("plResults").innerHTML="";$("plErr").hidden=true;
+  $("plClear").hidden=!(PL.task&&PL.task.place);$("plSave").textContent=PL.task?"Сохранить":"Добавить задачу";
+  $("plHead").textContent=PL.task?"Место для задачи":"Новая задача с местом";
+  $("placeBg").hidden=false;
+  if(!PL.map){PL.map=mkMap("plMap");PL.map.on("click",e=>plSetPoint(e.latlng.lat,e.latlng.lng,null))}
+  setTimeout(()=>{PL.map.invalidateSize();plShow();(PL.task?$("plQuery"):($("plTitle").value?$("plQuery"):$("plTitle"))).focus()},40);
+}
+function closePlace(){$("placeBg").hidden=true;PL.task=null;const o=PL.opener;if(o&&o.isConnected&&o.focus)try{o.focus({preventScroll:true})}catch(e){}}
+function plShow(){
+  if(PL.mk){PL.map.removeLayer(PL.mk);PL.mk=null}
+  if(PL.point){PL.mk=L.marker([PL.point.lat,PL.point.lng],{icon:pinIcon("•",true)}).addTo(PL.map);PL.map.setView([PL.point.lat,PL.point.lng],Math.max(PL.map.getZoom(),15));
+    $("plChosen").textContent="Выбрано: "+(PL.point.label||"точка на карте")+". Можно уточнить, нажав на карте."}
+  else{const c=MAP?MAP.getCenter():L.latLng(MINSK);PL.map.setView(c,MAP?MAP.getZoom():11);$("plChosen").textContent="Найдите адрес или нажмите на карте, чтобы поставить метку."}
+}
+function plPick(r){if(!r)return;PL.point={lat:+r.lat,lng:+r.lon,label:shortLabel(r.display_name)};$("plResults").innerHTML="";$("plQuery").value=PL.point.label;plShow()}
+let plRevTimer=null;
+function plSetPoint(lat,lng,label){
+  PL.point={lat,lng,label:label||(PL.point&&PL.point.label)||""};plShow();
+  clearTimeout(plRevTimer);plRevTimer=setTimeout(async()=>{
+    try{const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=ru&zoom=18&lat=${lat}&lon=${lng}`).then(r=>r.json());
+      if(PL.point&&PL.point.lat===lat&&PL.point.lng===lng&&r&&r.display_name){PL.point.label=shortLabel(r.display_name);$("plQuery").value=PL.point.label;plShow()}}catch(e){}
+  },700);
+}
+async function plFind(){
+  const q=$("plQuery").value.trim();if(!q)return;
+  const btn=$("plFind");btn.disabled=true;btn.textContent="Ищу…";$("plErr").hidden=true;
+  try{
+    let url="https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&accept-language=ru&q="+encodeURIComponent(q);
+    if(MAP){const b=MAP.getBounds().pad(2);url+="&viewbox="+[b.getWest(),b.getNorth(),b.getEast(),b.getSouth()].map(x=>x.toFixed(4)).join(",")}
+    const res=await fetch(url).then(r=>{if(!r.ok)throw new Error("сервис поиска не ответил");return r.json()});
+    PL.results=res||[];
+    $("plResults").innerHTML=PL.results.length?PL.results.map((r,i)=>`<li><button type="button" data-act="pl-pick" data-i="${i}">${esc(shortLabel(r.display_name))}<span class="muted" style="display:block;font-size:12px">${esc(String(r.display_name).split(",").slice(3,6).join(","))}</span></button></li>`).join(""):`<li class="muted" style="font-size:13px">Ничего не нашлось. Попробуйте иначе или поставьте метку на карте вручную.</li>`;
+    if(PL.results.length===1)plPick(PL.results[0]);
+  }catch(e){$("plErr").textContent="Поиск не сработал: "+(e.message||"нет связи")+". Поставьте метку на карте вручную.";$("plErr").hidden=false}
+  btn.disabled=false;btn.textContent="Найти";
+}
+$("plQuery").addEventListener("keydown",ev=>{if(ev.key==="Enter"){ev.preventDefault();plFind()}});
+$("placeBg").addEventListener("click",ev=>{if(ev.target===$("placeBg"))closePlace()});
+$("placeForm").addEventListener("submit",ev=>{ev.preventDefault();
+  const err=m=>{$("plErr").textContent=m;$("plErr").hidden=false};
+  if(!PL.point)return err("Выберите место: найдите адрес или нажмите на карте.");
+  const place={lat:+PL.point.lat.toFixed(6),lng:+PL.point.lng.toFixed(6),label:PL.point.label||""};
+  if(PL.task){const id=PL.task.id;mutate(s=>{const t=s.tasks.find(x=>x.id===id);if(t)t.place=place})}
+  else{const title=$("plTitle").value.trim();if(!title)return err("Впишите, что нужно сделать.");
+    mutate(s=>{s.tasks.push({id:uid(),title,created:Date.now(),place})});$("taskInput").value=""}
+  ui.fitNext=true;mapSig="";closePlace();render();
+});
+function alertMsg(){$("mapNote").textContent="карта не загрузилась — обновите страницу"}
 /* ---------- login & boot ---------- */
 async function startOnline(session){
   $("loginBg").hidden=true;$("who").textContent=session.user.email;$("whoWrap").hidden=false;
