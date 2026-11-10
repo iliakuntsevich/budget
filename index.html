@@ -856,8 +856,8 @@ function renderBreakdown(){
      const it=by[k]||(by[k]={name:e.name,group:e.group,v:0,n:0,cur:e.cur,orig:0,mixed:false});
      it.v-=e.v;it.n++;if(it.cur===e.cur)it.orig-=e.amount;else it.mixed=true}
    const items=Object.values(by).sort((a,b)=>b.v-a.v);
-   $("itRange").textContent=fmtDate(from)+" — "+fmtDate(to)+" · всего "+money(conv(tot,D(),"EUR"),"EUR");
-   $("bkItems").innerHTML=items.length?items.map(it=>`<li class="bk-item">${gdot(it.group)}<span class="bk-nm">${esc(it.name)}${it.n>1?` <span class="muted">× ${it.n}</span>`:""}</span><span class="bk-am num">${money(conv(it.v,D(),"EUR"),"EUR")}</span></li>`).join(""):`<li class="empty">Расходов в этом периоде нет.</li>`;}
+   $("itRange").textContent=fmtDate(from)+" — "+fmtDate(to)+" · всего "+nf.format(Math.round(conv(tot,D(),"EUR")))+" €";
+   $("bkItems").innerHTML=items.length?items.map(it=>`<li class="bk-item">${gdot(it.group)}<span class="bk-nm">${esc(it.name)}${it.n>1?` <span class="muted">× ${it.n}</span>`:""}</span><span class="bk-am num">${nf.format(Math.round(conv(it.v,D(),"EUR")))} €</span></li>`).join(""):`<li class="empty">Расходов в этом периоде нет.</li>`;}
   if(!rows.length){$("breakdown").innerHTML=`<div class="empty">Между этими зарплатами расходов пока нет.</div>`;return}
   const max=rows[0][1];
   $("breakdown").innerHTML=rows.map(([g,v])=>`<div class="bk"><span class="gtag" style="color:var(--ink)">${gdot(g)}${GNAME[g]}</span><span class="num">${eur(v)} <span class="muted">· ${Math.round(v/tot*100)}%</span></span><div class="bar"><i style="width:${(v/max*100).toFixed(1)}%;background:var(--g-${g})"></i></div></div>`).join("");
