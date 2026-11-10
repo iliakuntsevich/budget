@@ -286,15 +286,17 @@ form.f .field input,form.f .field select{background:var(--surface)}
 .task:hover .task-del,.task-del:focus-visible{opacity:1}
 .task-del:hover{color:var(--danger);background:var(--danger-soft)}
 .task-undo{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;background:var(--income-soft);border-radius:8px;padding:8px 12px;font-size:13.5px}
-.bk-items-head{display:flex;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.bk-items-head{display:grid;grid-template-columns:minmax(0,1fr) 130px 110px;gap:8px;padding-bottom:6px;border-bottom:1px solid var(--line)}
 .bk-items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
 .bk-item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
 .bk-item:last-child{border-bottom:0}
-.bk-group{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:12px 0 6px;border-bottom:1px solid var(--line);font-weight:600;font-size:14px}
+.bk-group{display:grid;grid-template-columns:auto minmax(0,1fr) 130px 110px;gap:8px;align-items:center;padding:12px 0 6px;border-bottom:1px solid var(--line);font-weight:600;font-size:14px}
 .bk-group .gdot{width:10px;height:10px}
-.bk-item.sub{grid-template-columns:minmax(0,1fr) auto;padding-left:18px;color:var(--ink)}
+.bk-item.sub{grid-template-columns:minmax(0,1fr) 130px 110px;padding-left:18px;color:var(--ink)}
 .bk-item.sub .bk-am{color:var(--muted)}
 .bk-nm{overflow-wrap:anywhere}
+.bk-need{text-align:left}
+@media (max-width:560px){.bk-items-head,.bk-item.sub{grid-template-columns:minmax(0,1fr) 92px 76px}.bk-group{grid-template-columns:auto minmax(0,1fr) 92px 76px}.bk-need .tag{font-size:10px}.lbl-cur{display:none}}
 .bk-am{text-align:right;white-space:nowrap;display:flex;flex-direction:column;align-items:flex-end}
 .bk-diff{display:flex;justify-content:space-between;align-items:baseline;gap:6px 16px;flex-wrap:wrap;border-top:1px solid var(--line);margin-top:16px;padding-top:12px;font-size:13px}
 .bk-diff-l{font-size:15px;font-weight:600}
@@ -424,7 +426,7 @@ form.f .field input,form.f .field select{background:var(--surface)}
   <section class="panel">
     <div class="panel-head"><h2>Общий список расходов за период <span id="itPeriod"></span></h2><div class="tabs" id="itTabs" role="tablist"></div></div>
     <div class="muted num" style="font-size:13px;margin:-6px 0 10px" id="itRange"></div>
-    <div class="bk-items-head"><span class="label">Название</span><span class="label">Стоимость, EUR</span></div>
+    <div class="bk-items-head"><span class="label">Название</span><span class="label bk-need">Вид</span><span class="label" style="text-align:right;white-space:nowrap">Стоимость<span class="lbl-cur">, €</span></span></div>
     <ul class="bk-items" id="bkItems"></ul>
   </section>
 
@@ -849,8 +851,8 @@ function renderItems(){
   const evs=eventsFor(y,m).concat(eventsFor(n.getFullYear(),n.getMonth())).filter(e=>e.date>=from&&e.date<=to);
   const by={};let tot=0;
   for(const e of evs){if(e.v>=0||e.status==="skip")continue;tot-=e.v;
-    const k=e.name.trim().toLowerCase()+"|"+e.group;
-    const it=by[k]||(by[k]={name:e.name,group:e.group,v:0,n:0});
+    const k=e.name.trim().toLowerCase()+"|"+e.group+"|"+e.need;
+    const it=by[k]||(by[k]={name:e.name,group:e.group,need:e.need,v:0,n:0});
     it.v-=e.v;it.n++}
   const items=Object.values(by).sort((a,b)=>b.v-a.v);
   $("itPeriod").textContent=fmtDate(from)+" — "+fmtDate(to);
@@ -858,8 +860,8 @@ function renderItems(){
   const E=v=>nf.format(Math.round(conv(v,D(),"EUR")))+" €";
   const grp={};for(const it of items)(grp[it.group]=grp[it.group]||{g:it.group,v:0,list:[]}),grp[it.group].v+=it.v,grp[it.group].list.push(it);
   const gs=Object.values(grp).sort((a,b)=>b.v-a.v);
-  $("bkItems").innerHTML=gs.length?gs.map(G=>`<li class="bk-group">${gdot(G.g)}<span class="bk-nm">${GNAME[G.g]||"Прочее"}</span><span class="bk-am num">${E(G.v)}</span></li>`+
-    G.list.map(it=>`<li class="bk-item sub"><span class="bk-nm">${esc(it.name)}${it.n>1?` <span class="muted">× ${it.n}</span>`:""}</span><span class="bk-am num">${E(it.v)}</span></li>`).join("")).join(""):`<li class="empty">Расходов в этом периоде нет.</li>`;
+  $("bkItems").innerHTML=gs.length?gs.map(G=>`<li class="bk-group">${gdot(G.g)}<span class="bk-nm">${GNAME[G.g]||"Прочее"}</span><span></span><span class="bk-am num">${E(G.v)}</span></li>`+
+    G.list.map(it=>`<li class="bk-item sub"><span class="bk-nm">${esc(it.name)}${it.n>1?` <span class="muted">× ${it.n}</span>`:""}</span><span class="bk-need"><span class="tag ${it.need==="must"?"must":""}">${NEED_NAME[it.need]||"—"}</span></span><span class="bk-am num">${E(it.v)}</span></li>`).join("")).join(""):`<li class="empty">Расходов в этом периоде нет.</li>`;
 }
 function renderBreakdown(){
   const {y,m}=monthsShown[selMonth];const n=new Date(y,m+1,1);
