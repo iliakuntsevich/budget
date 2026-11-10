@@ -286,7 +286,7 @@ form.f .field input,form.f .field select{background:var(--surface)}
 .task:hover .task-del,.task-del:focus-visible{opacity:1}
 .task-del:hover{color:var(--danger);background:var(--danger-soft)}
 .task-undo{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;background:var(--income-soft);border-radius:8px;padding:8px 12px;font-size:13.5px}
-.bk-items-head{display:flex;justify-content:space-between;margin-top:18px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.bk-items-head{display:flex;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid var(--line)}
 .bk-items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
 .bk-item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
 .bk-item:last-child{border-bottom:0}
@@ -413,10 +413,14 @@ form.f .field input,form.f .field select{background:var(--surface)}
   <section class="panel">
     <div class="panel-head"><h2>Расходы по группам от зарплаты до зарплаты</h2><span class="muted" style="font-size:13px"><span id="bkRange"></span> · <span class="num" id="bkTotal"></span></span></div>
     <div class="breakdown" id="breakdown" style="margin-top:0"></div>
-    <div class="bk-items-head"><span class="label">Расходы по названию</span><span class="label">Стоимость</span></div>
-    <ul class="bk-items" id="bkItems"></ul>
     <div class="bk-diff" id="bkDiff"></div>
     <div class="hint" style="margin-top:12px">Период меняется вместе с месяцем, выбранным в календаре.</div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Расходы по названию</h2><span class="muted" style="font-size:13px" id="itRange"></span></div>
+    <div class="bk-items-head"><span class="label">Название</span><span class="label">Стоимость, EUR</span></div>
+    <ul class="bk-items" id="bkItems"></ul>
   </section>
 
 </div>
@@ -852,7 +856,8 @@ function renderBreakdown(){
      const it=by[k]||(by[k]={name:e.name,group:e.group,v:0,n:0,cur:e.cur,orig:0,mixed:false});
      it.v-=e.v;it.n++;if(it.cur===e.cur)it.orig-=e.amount;else it.mixed=true}
    const items=Object.values(by).sort((a,b)=>b.v-a.v);
-   $("bkItems").innerHTML=items.length?items.map(it=>`<li class="bk-item">${gdot(it.group)}<span class="bk-nm">${esc(it.name)}${it.n>1?` <span class="muted">× ${it.n}</span>`:""}</span><span class="bk-am num">${eur(it.v)}${!it.mixed&&it.cur!==D()?`<span class="conv">${money(it.orig,it.cur)}</span>`:""}</span></li>`).join(""):`<li class="empty">Расходов в этом периоде нет.</li>`;}
+   $("itRange").textContent=fmtDate(from)+" — "+fmtDate(to)+" · всего "+money(conv(tot,D(),"EUR"),"EUR");
+   $("bkItems").innerHTML=items.length?items.map(it=>`<li class="bk-item">${gdot(it.group)}<span class="bk-nm">${esc(it.name)}${it.n>1?` <span class="muted">× ${it.n}</span>`:""}</span><span class="bk-am num">${money(conv(it.v,D(),"EUR"),"EUR")}</span></li>`).join(""):`<li class="empty">Расходов в этом периоде нет.</li>`;}
   if(!rows.length){$("breakdown").innerHTML=`<div class="empty">Между этими зарплатами расходов пока нет.</div>`;return}
   const max=rows[0][1];
   $("breakdown").innerHTML=rows.map(([g,v])=>`<div class="bk"><span class="gtag" style="color:var(--ink)">${gdot(g)}${GNAME[g]}</span><span class="num">${eur(v)} <span class="muted">· ${Math.round(v/tot*100)}%</span></span><div class="bar"><i style="width:${(v/max*100).toFixed(1)}%;background:var(--g-${g})"></i></div></div>`).join("");
