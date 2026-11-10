@@ -416,18 +416,13 @@ form.f .field input,form.f .field select{background:var(--surface)}
     <div class="agenda" id="agenda"></div>
   </section>
 
-  <section class="panel">
-    <div class="panel-head"><h2>Расходы по группам от зарплаты до зарплаты</h2><span class="muted" style="font-size:13px"><span id="bkRange"></span> · <span class="num" id="bkTotal"></span></span></div>
-    <div class="breakdown" id="breakdown" style="margin-top:0"></div>
-    <div class="bk-diff" id="bkDiff"></div>
-    <div class="hint" style="margin-top:12px">Период меняется вместе с месяцем, выбранным в календаре.</div>
-  </section>
 
   <section class="panel">
     <div class="panel-head"><h2>Общий список расходов за период <span id="itPeriod"></span></h2><div class="tabs" id="itTabs" role="tablist"></div></div>
     <div class="muted num" style="font-size:13px;margin:-6px 0 10px" id="itRange"></div>
     <div class="bk-items-head"><span class="label">Название</span><span class="label bk-need">Вид</span><span class="label" style="text-align:right;white-space:nowrap">Стоимость<span class="lbl-cur">, €</span></span></div>
     <ul class="bk-items" id="bkItems"></ul>
+    <div class="bk-diff" id="bkDiff"></div>
   </section>
 
 </div>
@@ -710,7 +705,7 @@ function render(){
   const P=project();
   const t=parse(TODAY);
   $("todayLine").textContent="Сегодня "+t.getDate()+" "+MONTHS_G[t.getMonth()]+", "+WD_LONG[t.getDay()]+". План до конца "+MONTHS_G[monthsShown[2].m]+". Итоги в "+D();
-  renderWallet(P);renderStats(P);renderTabs();renderCal(P);renderBreakdown();renderItems();renderTasks();renderMap();renderAgenda(P);renderDay(P);
+  renderWallet(P);renderStats(P);renderTabs();renderCal(P);renderItems();renderTasks();renderMap();renderAgenda(P);renderDay(P);
   const hasEx=state.recurring.some(r=>r.example)||state.oneoff.some(e=>e.example)||state.balances.example;
   $("exampleBanner").hidden=!hasEx;
 }
@@ -856,30 +851,17 @@ function renderItems(){
     it.v-=e.v;it.n++}
   const items=Object.values(by).sort((a,b)=>b.v-a.v);
   $("itPeriod").textContent=fmtDate(from)+" — "+fmtDate(to);
-  $("itRange").textContent="всего "+nf.format(Math.round(conv(tot,D(),"EUR")))+" €";
+  const E0=v=>nf.format(Math.round(conv(v,D(),"EUR")))+" €";
+  let bm=0;for(const e of evs)if(e.v<0&&e.status!=="skip"&&e.need==="must")bm-=e.v;
+  $("itRange").textContent="всего "+E0(tot)+" · обязательные "+E0(bm)+" · гибкие "+E0(tot-bm);
+  const sal=evs.find(e=>e.type==="salary"&&e.date===from&&e.status!=="skip");
+  const salV=sal?conv(sal.v,D(),"EUR"):0,totE=conv(tot,D(),"EUR"),diff=salV-totE;
+  $("bkDiff").innerHTML=`<span class="bk-diff-l">Разница: <b class="num ${diff<0?"neg":"pos"}">${(diff>0?"+":diff<0?"−":"")+nf.format(Math.abs(Math.round(diff)))} EUR</b></span><span class="muted">зарплата ${nf.format(Math.round(salV))} EUR − расходы ${nf.format(Math.round(totE))} EUR</span>`;
   const E=v=>nf.format(Math.round(conv(v,D(),"EUR")))+" €";
   const grp={};for(const it of items)(grp[it.group]=grp[it.group]||{g:it.group,v:0,list:[]}),grp[it.group].v+=it.v,grp[it.group].list.push(it);
   const gs=Object.values(grp).sort((a,b)=>b.v-a.v);
   $("bkItems").innerHTML=gs.length?gs.map(G=>`<li class="bk-group">${gdot(G.g)}<span class="bk-nm">${GNAME[G.g]||"Прочее"}</span><span></span><span class="bk-am num">${E(G.v)}</span></li>`+
     G.list.map(it=>`<li class="bk-item sub"><span class="bk-nm">${esc(it.name)}${it.n>1?` <span class="muted">× ${it.n}</span>`:""}</span><span class="bk-need"><span class="tag ${it.need==="must"?"must":""}">${NEED_NAME[it.need]||"—"}</span></span><span class="bk-am num">${E(it.v)}</span></li>`).join("")).join(""):`<li class="empty">Расходов в этом периоде нет.</li>`;
-}
-function renderBreakdown(){
-  const {y,m}=monthsShown[selMonth];const n=new Date(y,m+1,1);
-  const [from,to]=payPeriod(selMonth);
-  const evs=eventsFor(y,m).concat(eventsFor(n.getFullYear(),n.getMonth())).filter(e=>e.date>=from&&e.date<=to);
-  const sums={};let tot=0;
-  for(const e of evs){if(e.v>=0||e.status==="skip")continue;sums[e.group]=(sums[e.group]||0)-e.v;tot-=e.v}
-  const rows=Object.entries(sums).sort((a,b)=>b[1]-a[1]);
-  $("bkRange").textContent=fmtDate(from)+" — "+fmtDate(to);
-  let bm=0;for(const e of evs)if(e.v<0&&e.status!=="skip"&&e.need==="must")bm-=e.v;
-  $("bkTotal").textContent="всего "+eur(tot)+" · обязательные "+eur(bm)+" · гибкие "+eur(tot-bm);
-  const sal=evs.find(e=>e.type==="salary"&&e.date===from&&e.status!=="skip");
-  const salV=sal?sal.v:0,diff=salV-tot;
-  const code=v=>(v>0?"+":v<0?"−":"")+nf.format(Math.abs(Math.round(v*100)/100))+" "+D();
-  $("bkDiff").innerHTML=`<span class="bk-diff-l">Разница: <b class="num ${diff<0?"neg":"pos"}">${code(diff)}</b></span><span class="muted">зарплата ${nf.format(Math.round(salV*100)/100)} ${D()} − расходы ${nf.format(Math.round(tot*100)/100)} ${D()}</span>`;
-  if(!rows.length){$("breakdown").innerHTML=`<div class="empty">Между этими зарплатами расходов пока нет.</div>`;return}
-  const max=rows[0][1];
-  $("breakdown").innerHTML=rows.map(([g,v])=>`<div class="bk"><span class="gtag" style="color:var(--ink)">${gdot(g)}${GNAME[g]}</span><span class="num">${eur(v)} <span class="muted">· ${Math.round(v/tot*100)}%</span></span><div class="bar"><i style="width:${(v/max*100).toFixed(1)}%;background:var(--g-${g})"></i></div></div>`).join("");
 }
 function renderAgenda(P){
   const {y,m}=monthsShown[selMonth];const ev=eventsFor(y,m);
