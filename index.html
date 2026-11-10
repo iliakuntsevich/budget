@@ -418,7 +418,8 @@ form.f .field input,form.f .field select{background:var(--surface)}
   </section>
 
   <section class="panel">
-    <div class="panel-head"><h2>Расходы по названию</h2><span class="muted" style="font-size:13px" id="itRange"></span></div>
+    <div class="panel-head"><h2>Общий список расходов за период <span id="itPeriod"></span></h2><div class="tabs" id="itTabs" role="tablist"></div></div>
+    <div class="muted num" style="font-size:13px;margin:-6px 0 10px" id="itRange"></div>
     <div class="bk-items-head"><span class="label">Название</span><span class="label">Стоимость, EUR</span></div>
     <ul class="bk-items" id="bkItems"></ul>
   </section>
@@ -703,7 +704,7 @@ function render(){
   const P=project();
   const t=parse(TODAY);
   $("todayLine").textContent="Сегодня "+t.getDate()+" "+MONTHS_G[t.getMonth()]+", "+WD_LONG[t.getDay()]+". План до конца "+MONTHS_G[monthsShown[2].m]+". Итоги в "+D();
-  renderWallet(P);renderStats(P);renderTabs();renderCal(P);renderBreakdown();renderTasks();renderMap();renderAgenda(P);renderDay(P);
+  renderWallet(P);renderStats(P);renderTabs();renderCal(P);renderBreakdown();renderItems();renderTasks();renderMap();renderAgenda(P);renderDay(P);
   const hasEx=state.recurring.some(r=>r.example)||state.oneoff.some(e=>e.example)||state.balances.example;
   $("exampleBanner").hidden=!hasEx;
 }
@@ -836,6 +837,22 @@ function taskSave(inp){
   if(!v){taskRemove(id);return}
   mutate(s=>{const t=s.tasks.find(x=>x.id===id);if(t&&t.title!==v)t.title=v});
 }
+function renderItems(){
+  const idx=ui.itMonth||0;
+  $("itTabs").innerHTML=monthsShown.map((x,i)=>`<button class="tab" role="tab" aria-selected="${i===idx}" data-act="it-tab" data-i="${i}">${MONTHS[x.m][0].toUpperCase()+MONTHS[x.m].slice(1)}${x.y!==curY?" "+x.y:""}</button>`).join("");
+  const {y,m}=monthsShown[idx];const n=new Date(y,m+1,1);
+  const [from,to]=payPeriod(idx);
+  const evs=eventsFor(y,m).concat(eventsFor(n.getFullYear(),n.getMonth())).filter(e=>e.date>=from&&e.date<=to);
+  const by={};let tot=0;
+  for(const e of evs){if(e.v>=0||e.status==="skip")continue;tot-=e.v;
+    const k=e.name.trim().toLowerCase()+"|"+e.group;
+    const it=by[k]||(by[k]={name:e.name,group:e.group,v:0,n:0});
+    it.v-=e.v;it.n++}
+  const items=Object.values(by).sort((a,b)=>b.v-a.v);
+  $("itPeriod").textContent=fmtDate(from)+" — "+fmtDate(to);
+  $("itRange").textContent="всего "+nf.format(Math.round(conv(tot,D(),"EUR")))+" €";
+  $("bkItems").innerHTML=items.length?items.map(it=>`<li class="bk-item">${gdot(it.group)}<span class="bk-nm">${esc(it.name)}${it.n>1?` <span class="muted">× ${it.n}</span>`:""}</span><span class="bk-am num">${nf.format(Math.round(conv(it.v,D(),"EUR")))} €</span></li>`).join(""):`<li class="empty">Расходов в этом периоде нет.</li>`;
+}
 function renderBreakdown(){
   const {y,m}=monthsShown[selMonth];const n=new Date(y,m+1,1);
   const [from,to]=payPeriod(selMonth);
@@ -850,14 +867,6 @@ function renderBreakdown(){
   const salV=sal?sal.v:0,diff=salV-tot;
   const code=v=>(v>0?"+":v<0?"−":"")+nf.format(Math.abs(Math.round(v*100)/100))+" "+D();
   $("bkDiff").innerHTML=`<span class="bk-diff-l">Разница: <b class="num ${diff<0?"neg":"pos"}">${code(diff)}</b></span><span class="muted">зарплата ${nf.format(Math.round(salV*100)/100)} ${D()} − расходы ${nf.format(Math.round(tot*100)/100)} ${D()}</span>`;
-  {const by={};
-   for(const e of evs){if(e.v>=0||e.status==="skip")continue;
-     const k=e.name.trim().toLowerCase()+"|"+e.group;
-     const it=by[k]||(by[k]={name:e.name,group:e.group,v:0,n:0,cur:e.cur,orig:0,mixed:false});
-     it.v-=e.v;it.n++;if(it.cur===e.cur)it.orig-=e.amount;else it.mixed=true}
-   const items=Object.values(by).sort((a,b)=>b.v-a.v);
-   $("itRange").textContent=fmtDate(from)+" — "+fmtDate(to)+" · всего "+nf.format(Math.round(conv(tot,D(),"EUR")))+" €";
-   $("bkItems").innerHTML=items.length?items.map(it=>`<li class="bk-item">${gdot(it.group)}<span class="bk-nm">${esc(it.name)}${it.n>1?` <span class="muted">× ${it.n}</span>`:""}</span><span class="bk-am num">${nf.format(Math.round(conv(it.v,D(),"EUR")))} €</span></li>`).join(""):`<li class="empty">Расходов в этом периоде нет.</li>`;}
   if(!rows.length){$("breakdown").innerHTML=`<div class="empty">Между этими зарплатами расходов пока нет.</div>`;return}
   const max=rows[0][1];
   $("breakdown").innerHTML=rows.map(([g,v])=>`<div class="bk"><span class="gtag" style="color:var(--ink)">${gdot(g)}${GNAME[g]}</span><span class="num">${eur(v)} <span class="muted">· ${Math.round(v/tot*100)}%</span></span><div class="bar"><i style="width:${(v/max*100).toFixed(1)}%;background:var(--g-${g})"></i></div></div>`).join("");
@@ -920,6 +929,7 @@ document.addEventListener("click",ev=>{
   const clean=k=>{const o=state.overrides[k];if(o&&!o.done&&!o.skip&&o.amount==null)delete state.overrides[k]};
   switch(a){
     case"tab":selMonth=+b.dataset.i;ui.editAmt=null;render();break;
+    case"it-tab":ui.itMonth=+b.dataset.i;renderItems();break;
     case"open-add":openAdd({type:b.dataset.type||"one"});break;
     case"close-add":closeAdd();break;
     case"f-del":$("fDel").hidden=true;$("fDelConfirm").hidden=false;break;
