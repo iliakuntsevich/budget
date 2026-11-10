@@ -286,6 +286,9 @@ form.f .field input,form.f .field select{background:var(--surface)}
 .task:hover .task-del,.task-del:focus-visible{opacity:1}
 .task-del:hover{color:var(--danger);background:var(--danger-soft)}
 .task-undo{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;background:var(--income-soft);border-radius:8px;padding:8px 12px;font-size:13.5px}
+.it-diff{font-weight:600}
+.it-diff.pos{color:var(--income)}
+.it-diff.neg{color:var(--danger)}
 .bk-items-head{display:grid;grid-template-columns:minmax(0,1fr) 130px 110px;gap:8px;padding-bottom:6px;border-bottom:1px solid var(--line)}
 .bk-items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
 .bk-item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
@@ -422,7 +425,6 @@ form.f .field input,form.f .field select{background:var(--surface)}
     <div class="muted num" style="font-size:13px;margin:-6px 0 10px" id="itRange"></div>
     <div class="bk-items-head"><span class="label">Название</span><span class="label bk-need">Вид</span><span class="label" style="text-align:right;white-space:nowrap">Стоимость<span class="lbl-cur">, €</span></span></div>
     <ul class="bk-items" id="bkItems"></ul>
-    <div class="bk-diff" id="bkDiff"></div>
   </section>
 
 </div>
@@ -853,10 +855,10 @@ function renderItems(){
   $("itPeriod").textContent=fmtDate(from)+" — "+fmtDate(to);
   const E0=v=>nf.format(Math.round(conv(v,D(),"EUR")))+" €";
   let bm=0;for(const e of evs)if(e.v<0&&e.status!=="skip"&&e.need==="must")bm-=e.v;
-  $("itRange").textContent="всего "+E0(tot)+" · обязательные "+E0(bm)+" · гибкие "+E0(tot-bm);
   const sal=evs.find(e=>e.type==="salary"&&e.date===from&&e.status!=="skip");
   const salV=sal?conv(sal.v,D(),"EUR"):0,totE=conv(tot,D(),"EUR"),diff=salV-totE;
-  $("bkDiff").innerHTML=`<span class="bk-diff-l">Разница: <b class="num ${diff<0?"neg":"pos"}">${(diff>0?"+":diff<0?"−":"")+nf.format(Math.abs(Math.round(diff)))} EUR</b></span><span class="muted">зарплата ${nf.format(Math.round(salV))} EUR − расходы ${nf.format(Math.round(totE))} EUR</span>`;
+  $("itRange").innerHTML="всего "+E0(tot)+" · обязательные "+E0(bm)+" · гибкие "+E0(tot-bm)+
+    ` · <span class="it-diff ${Math.round(diff)<0?"neg":"pos"}" title="зарплата ${nf.format(Math.round(salV))} EUR − расходы ${nf.format(Math.round(totE))} EUR">Разница: ${(Math.round(diff)>0?"+":Math.round(diff)<0?"−":"")+nf.format(Math.abs(Math.round(diff)))} EUR</span>`;
   const E=v=>nf.format(Math.round(conv(v,D(),"EUR")))+" €";
   const grp={};for(const it of items)(grp[it.group]=grp[it.group]||{g:it.group,v:0,list:[]}),grp[it.group].v+=it.v,grp[it.group].list.push(it);
   const gs=Object.values(grp).sort((a,b)=>b.v-a.v);
