@@ -707,7 +707,7 @@ function render(){
   const P=project();
   const t=parse(TODAY);
   $("todayLine").textContent="Сегодня "+t.getDate()+" "+MONTHS_G[t.getMonth()]+", "+WD_LONG[t.getDay()]+". План до конца "+MONTHS_G[monthsShown[2].m]+". Итоги в "+D();
-  renderWallet(P);renderStats(P);renderTabs();renderCal(P);renderItems();renderTasks();renderMap();renderAgenda(P);renderDay(P);
+  renderWallet(P);renderStats(P);renderTabs();renderCal(P);renderItems(P);renderTasks();renderMap();renderAgenda(P);renderDay(P);
   const hasEx=state.recurring.some(r=>r.example)||state.oneoff.some(e=>e.example)||state.balances.example;
   $("exampleBanner").hidden=!hasEx;
 }
@@ -840,7 +840,8 @@ function taskSave(inp){
   if(!v){taskRemove(id);return}
   mutate(s=>{const t=s.tasks.find(x=>x.id===id);if(t&&t.title!==v)t.title=v});
 }
-function renderItems(){
+function renderItems(P){
+  P=P||project();
   const idx=ui.itMonth||0;
   $("itTabs").innerHTML=monthsShown.map((x,i)=>`<button class="tab" role="tab" aria-selected="${i===idx}" data-act="it-tab" data-i="${i}">${MONTHS[x.m][0].toUpperCase()+MONTHS[x.m].slice(1)}${x.y!==curY?" "+x.y:""}</button>`).join("");
   const {y,m}=monthsShown[idx];const n=new Date(y,m+1,1);
@@ -856,10 +857,11 @@ function renderItems(){
   $("itPeriod").textContent=fmtDate(from)+" — "+fmtDate(to);
   const E0=v=>nf.format(Math.round(conv(v,D(),"EUR")))+" €";
   let bm=0;for(const e of evs)if(e.v<0&&!e.status&&e.need==="must")bm-=e.v;
-  const sal=evs.find(e=>e.type==="salary"&&e.date===from&&e.status!=="skip");
-  const salV=sal?conv(sal.v,D(),"EUR"):0,totE=conv(all,D(),"EUR"),diff=salV-totE;
+  // same forecast as the calendar and the "Останется к зарплате" tile: balance on the evening before the next salary
+  const endBal=P.eod[to]!=null?P.eod[to]:P.start;
+  const diff=conv(endBal,D(),"EUR");
   $("itRange").innerHTML="осталось оплатить "+E0(tot)+" · обязательные "+E0(bm)+" · гибкие "+E0(tot-bm)+
-    ` · <span class="it-diff ${Math.round(diff)<0?"neg":"pos"}" title="зарплата ${nf.format(Math.round(salV))} EUR − расходы ${nf.format(Math.round(totE))} EUR">Разница: ${(Math.round(diff)>0?"+":Math.round(diff)<0?"−":"")+nf.format(Math.abs(Math.round(diff)))} EUR</span>`;
+    ` · <span class="it-diff ${Math.round(diff)<0?"neg":"pos"}" title="Сколько останется на вечер ${fmtDate(to)}: деньги сейчас плюс зарплаты и минус неоплаченные расходы до этой даты — как «Останется к зарплате» и остаток в календаре">Разница: ${(Math.round(diff)>0?"+":Math.round(diff)<0?"−":"")+nf.format(Math.abs(Math.round(diff)))} EUR</span>`;
   const E=v=>nf.format(Math.round(conv(v,D(),"EUR")))+" €";
   const grp={};for(const it of items)(grp[it.group]=grp[it.group]||{g:it.group,v:0,list:[]}),grp[it.group].v+=it.v,grp[it.group].list.push(it);
   const gs=Object.values(grp).sort((a,b)=>b.v-a.v);
