@@ -846,24 +846,25 @@ function renderItems(){
   const {y,m}=monthsShown[idx];const n=new Date(y,m+1,1);
   const [from,to]=payPeriod(idx);
   const evs=eventsFor(y,m).concat(eventsFor(n.getFullYear(),n.getMonth())).filter(e=>e.date>=from&&e.date<=to);
-  const by={};let tot=0;
-  for(const e of evs){if(e.v>=0||e.status==="skip")continue;tot-=e.v;
+  const by={};let tot=0,all=0;
+  for(const e of evs)if(e.v<0&&e.status!=="skip")all-=e.v;
+  for(const e of evs){if(e.v>=0||e.status==="skip"||e.status==="paid")continue;tot-=e.v;
     const k=e.name.trim().toLowerCase()+"|"+e.group+"|"+e.need;
     const it=by[k]||(by[k]={name:e.name,group:e.group,need:e.need,v:0,n:0});
     it.v-=e.v;it.n++}
   const items=Object.values(by).sort((a,b)=>b.v-a.v);
   $("itPeriod").textContent=fmtDate(from)+" — "+fmtDate(to);
   const E0=v=>nf.format(Math.round(conv(v,D(),"EUR")))+" €";
-  let bm=0;for(const e of evs)if(e.v<0&&e.status!=="skip"&&e.need==="must")bm-=e.v;
+  let bm=0;for(const e of evs)if(e.v<0&&!e.status&&e.need==="must")bm-=e.v;
   const sal=evs.find(e=>e.type==="salary"&&e.date===from&&e.status!=="skip");
-  const salV=sal?conv(sal.v,D(),"EUR"):0,totE=conv(tot,D(),"EUR"),diff=salV-totE;
-  $("itRange").innerHTML="всего "+E0(tot)+" · обязательные "+E0(bm)+" · гибкие "+E0(tot-bm)+
+  const salV=sal?conv(sal.v,D(),"EUR"):0,totE=conv(all,D(),"EUR"),diff=salV-totE;
+  $("itRange").innerHTML="осталось оплатить "+E0(tot)+" · обязательные "+E0(bm)+" · гибкие "+E0(tot-bm)+
     ` · <span class="it-diff ${Math.round(diff)<0?"neg":"pos"}" title="зарплата ${nf.format(Math.round(salV))} EUR − расходы ${nf.format(Math.round(totE))} EUR">Разница: ${(Math.round(diff)>0?"+":Math.round(diff)<0?"−":"")+nf.format(Math.abs(Math.round(diff)))} EUR</span>`;
   const E=v=>nf.format(Math.round(conv(v,D(),"EUR")))+" €";
   const grp={};for(const it of items)(grp[it.group]=grp[it.group]||{g:it.group,v:0,list:[]}),grp[it.group].v+=it.v,grp[it.group].list.push(it);
   const gs=Object.values(grp).sort((a,b)=>b.v-a.v);
   $("bkItems").innerHTML=gs.length?gs.map(G=>`<li class="bk-group">${gdot(G.g)}<span class="bk-nm">${GNAME[G.g]||"Прочее"}</span><span></span><span class="bk-am num">${E(G.v)}</span></li>`+
-    G.list.map(it=>`<li class="bk-item sub"><span class="bk-nm">${esc(it.name)}${it.n>1?` <span class="muted">× ${it.n}</span>`:""}</span><span class="bk-need"><span class="tag ${it.need==="must"?"must":""}">${NEED_NAME[it.need]||"—"}</span></span><span class="bk-am num">${E(it.v)}</span></li>`).join("")).join(""):`<li class="empty">Расходов в этом периоде нет.</li>`;
+    G.list.map(it=>`<li class="bk-item sub"><span class="bk-nm">${esc(it.name)}${it.n>1?` <span class="muted">× ${it.n}</span>`:""}</span><span class="bk-need"><span class="tag ${it.need==="must"?"must":""}">${NEED_NAME[it.need]||"—"}</span></span><span class="bk-am num">${E(it.v)}</span></li>`).join("")).join(""):`<li class="empty">${all>0?"Все расходы этого периода оплачены.":"Расходов в этом периоде нет."}</li>`;
 }
 function renderAgenda(P){
   const {y,m}=monthsShown[selMonth];const ev=eventsFor(y,m);
