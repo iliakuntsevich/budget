@@ -684,7 +684,8 @@ function eventsFor(y,m){
   out.sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(b.amount>0)-(a.amount>0));
   return out;
 }
-const counts=e=>e.date>=TODAY&&!e.status;
+// salary on its payday is already included in the balances entered that day
+const counts=e=>e.date>=TODAY&&!e.status&&!(e.type==="salary"&&e.date===TODAY);
 
 function project(){
   if(!PROJ_END)PROJ_END=salaryDate(EXTRA.y,EXTRA.m);
@@ -717,7 +718,7 @@ function renderWallet(P){
   $("balTotal").textContent=eur(P.start);
 }
 function renderStats(P){
-  const pay=P.all.find(e=>e.type==="salary"&&e.date>=TODAY&&e.status!=="skip"&&!(e.status==="paid"&&e.date===TODAY));
+  const pay=P.all.find(e=>e.type==="salary"&&e.date>TODAY&&e.status!=="skip");
   let html="";
   if(pay){
     const days=Math.round((parse(pay.date)-parse(TODAY))/864e5);
