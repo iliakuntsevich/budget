@@ -537,7 +537,9 @@ const WD_SHORT=["вс","пн","вт","ср","чт","пт","сб"];
 const WD_LONG=["воскресенье","понедельник","вторник","среда","четверг","пятница","суббота"];
 const fmtDate=s=>{const d=parse(s);return d.getDate()+" "+MONTHS_G[d.getMonth()]};
 const fmtDateW=s=>{const d=parse(s);return d.getDate()+" "+MONTHS_G[d.getMonth()]+", "+WD_SHORT[d.getDay()]};
-const nf=new Intl.NumberFormat("ru-RU",{minimumFractionDigits:0,maximumFractionDigits:2});
+// all amounts on screen are whole numbers; nfx keeps decimals only where the user typed them (input hints)
+const nf=new Intl.NumberFormat("ru-RU",{maximumFractionDigits:0});
+const nfx=new Intl.NumberFormat("ru-RU",{minimumFractionDigits:0,maximumFractionDigits:2});
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const uid=()=>Math.random().toString(36).slice(2,9);
 const num=v=>{const n=parseFloat(String(v).replace(",","."));return isFinite(n)?n:0};
@@ -560,8 +562,8 @@ const defAcc=(cur,inc)=>cur==="EUR"||cur==="USD"?"cardEur":"cardByn";
 const curOf=c=>CURS.includes(c)?c:"EUR";
 const R=c=>c==="BYN"?1:Math.max(0.0001,num(state.rates[c])||1);
 const conv=(x,from,to)=>from===to?x:x*R(from)/R(to);
-const money=(v,c)=>nf.format(Math.round(v*100)/100)+" "+SYM[c];
-const moneyS=(v,c)=>(v>0?"+":v<0?"−":"")+nf.format(Math.abs(Math.round(v*100)/100))+" "+SYM[c];
+const money=(v,c)=>(Math.round(v)<0?"−":"")+nf.format(Math.abs(Math.round(v)))+" "+SYM[c];
+const moneyS=(v,c)=>(Math.round(v)>0?"+":Math.round(v)<0?"−":"")+nf.format(Math.abs(Math.round(v)))+" "+SYM[c];
 const D=()=>curOf(state.display);
 const eur=v=>money(v,D());
 const eurS=v=>moneyS(v,D());
@@ -1022,7 +1024,7 @@ function openAdd(o){
     $("occSkipW").hidden=isOne;$("occAmtW").hidden=isOne;
     $("occAmtL").textContent="Сумма в этот раз, "+oc.cur;
     $("occAmt").value=oc.changed?Math.abs(oc.amount):"";
-    $("occAmt").placeholder="как обычно: "+nf.format(oc.base)+" "+oc.cur;
+    $("occAmt").placeholder="как обычно: "+nfx.format(oc.base)+" "+oc.cur;
     $("occHint").textContent=isOne?"":(oc.type==="salary"?"Меняется только эта выплата.":"Эти отметки касаются только платежа "+fmtDate(oc.date)+". Ниже — настройки для всех платежей.");
   }
   const e=F.edit;
