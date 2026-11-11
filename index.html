@@ -922,7 +922,7 @@ document.addEventListener("click",ev=>{
   const ov=k=>state.overrides[k]=state.overrides[k]||{};
   const clean=k=>{const o=state.overrides[k];if(o&&!o.done&&!o.skip&&o.amount==null)delete state.overrides[k]};
   switch(a){
-    case"tab":selMonth=+b.dataset.i;ui.editAmt=null;render();break;
+    case"tab":selMonth=+b.dataset.i;ui.itMonth=selMonth;ui.editAmt=null;render();break;
     case"it-tab":ui.itMonth=+b.dataset.i;renderItems();break;
     case"open-add":openAdd({type:b.dataset.type||"one"});break;
     case"close-add":closeAdd();break;
@@ -950,7 +950,7 @@ document.addEventListener("click",ev=>{
     case"row":openRow(k);break;
     case"close-day":closeDay();break;
     case"day-prev":case"day-next":{const n=addDays(ui.day,a==="day-prev"?-1:1);if(n<ymd(new Date(curY,curM,1))||n>HORIZON_END)break;ui.day=n;ui.editAmt=null;
-      const mi=monthsShown.findIndex(x=>mkey(x.y,x.m)===n.slice(0,7));if(mi>=0)selMonth=mi;render();break}
+      const mi=monthsShown.findIndex(x=>mkey(x.y,x.m)===n.slice(0,7));if(mi>=0){selMonth=mi;ui.itMonth=mi}render();break}
     case"day-add":openAdd({type:"one",date:ui.day});break;
     case"ov-done":mutate(s=>{const o=ov(k);o.done=!o.done;if(o.done)delete o.skip;clean(k)});break;
     case"ov-skip":mutate(s=>{const o=ov(k);o.skip=!o.skip;if(o.skip)delete o.done;clean(k)});break;
@@ -1075,7 +1075,7 @@ $("addForm").addEventListener("submit",ev=>{ev.preventDefault();
     const date=$("fDate").value;if(!date)return err("Укажите дату.");
     const item=Object.assign({kind:t==="inc"?"income":"expense",date,name,group:t==="inc"?null:F.group,need:t==="inc"?null:F.need},money_);
     mutate(s=>{if(editId){const e=s.oneoff.find(x=>x.id===editId);if(e){Object.assign(e,item);delete e.example}}else s.oneoff.push(Object.assign({id:uid(),done:false},item));occPatch(s)});
-    const mi=monthsShown.findIndex(x=>mkey(x.y,x.m)===date.slice(0,7));if(mi>=0&&mi!==selMonth){selMonth=mi;render()}
+    const mi=monthsShown.findIndex(x=>mkey(x.y,x.m)===date.slice(0,7));if(mi>=0&&mi!==selMonth){selMonth=mi;ui.itMonth=mi;render()}
   }
   closeAdd();
 });
