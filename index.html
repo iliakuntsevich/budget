@@ -286,6 +286,26 @@ form.f .field input,form.f .field select{background:var(--surface)}
 .task:hover .task-del,.task-del:focus-visible{opacity:1}
 .task-del:hover{color:var(--danger);background:var(--danger-soft)}
 .task-undo{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;background:var(--income-soft);border-radius:8px;padding:8px 12px;font-size:13.5px}
+.it-tools{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+@media (max-width:620px){.it-tools{align-items:flex-start}}
+.pdf-btn{font-weight:600;color:var(--accent);border-color:var(--accent)}
+#printArea{display:none}
+@media print{
+  @page{margin:14mm}
+  body.printing{background:#fff!important;color:#000!important}
+  body.printing>*:not(#printArea){display:none!important}
+  body.printing #printArea{display:block!important;font-family:var(--f-body);color:#000;font-size:11pt}
+  #printArea h1{font-family:var(--f-display);font-size:17pt;margin:0 0 6pt}
+  #printArea .pp{margin:0 0 4pt;color:#333}
+  #printArea .pf{margin-top:10pt;color:#777;font-size:9pt}
+  #printArea b.pos{color:#1D7A4C}#printArea b.neg{color:#B9342A}
+  #printArea table{width:100%;border-collapse:collapse;margin-top:10pt}
+  #printArea th{text-align:left;font-size:8.5pt;text-transform:uppercase;letter-spacing:.05em;color:#555;border-bottom:1pt solid #999;padding:4pt 6pt}
+  #printArea td{padding:4pt 6pt;border-bottom:.5pt solid #ddd;vertical-align:top}
+  #printArea tr.pg td{font-weight:600;background:#f1f4f7;border-bottom:.5pt solid #bbb;padding-top:6pt}
+  #printArea .am{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  #printArea tr{break-inside:avoid}
+}
 .it-diff.pos{color:var(--income)}
 .it-diff.neg{color:var(--danger)}
 .bk-items-head{display:grid;grid-template-columns:minmax(0,1fr) 130px 110px;gap:8px;padding-bottom:6px;border-bottom:1px solid var(--line)}
@@ -420,7 +440,7 @@ form.f .field input,form.f .field select{background:var(--surface)}
 
 
   <section class="panel">
-    <div class="panel-head"><h2>Общий список расходов за период <span id="itPeriod"></span></h2><div class="tabs" id="itTabs" role="tablist"></div></div>
+    <div class="panel-head"><h2>Общий список расходов за период <span id="itPeriod"></span></h2><div class="it-tools"><div class="tabs" id="itTabs" role="tablist"></div><button type="button" class="btn pdf-btn" data-act="it-pdf">↓ Скачать PDF</button></div></div>
     <div class="muted num" style="font-size:13px;margin:-6px 0 10px" id="itRange"></div>
     <div class="bk-items-head"><span class="label">Название</span><span class="label bk-need">Вид</span><span class="label" style="text-align:right;white-space:nowrap">Стоимость<span class="lbl-cur">, €</span></span></div>
     <ul class="bk-items" id="bkItems"></ul>
@@ -437,6 +457,8 @@ form.f .field input,form.f .field select{background:var(--surface)}
     <button class="btn primary" type="submit" id="lgBtn">Войти</button>
   </form>
 </div>
+
+<div id="printArea" aria-hidden="true"></div>
 
 <div class="sheet-bg" id="placeBg" hidden>
   <form class="sheet" id="placeForm" role="dialog" aria-modal="true" aria-labelledby="plHead" autocomplete="off" novalidate>
@@ -867,8 +889,27 @@ function renderItems(P){
   const E=v=>nf.format(Math.round(conv(v,D(),"EUR")))+" €";
   const grp={};for(const it of items)(grp[it.group]=grp[it.group]||{g:it.group,v:0,list:[]}),grp[it.group].v+=it.v,grp[it.group].list.push(it);
   const gs=Object.values(grp).sort((a,b)=>b.v-a.v);
+  ui.itPrint={from,to,gs,tot,bm,diff,E0,E};
   $("bkItems").innerHTML=gs.length?gs.map(G=>`<li class="bk-group">${gdot(G.g)}<span class="bk-nm">${GNAME[G.g]||"Прочее"}</span><span></span><span class="bk-am num">${E(G.v)}</span></li>`+
     G.list.map(it=>`<li class="bk-item sub"><span class="bk-nm">${esc(it.name)}${it.n>1?` <span class="muted">× ${it.n}</span>`:""}</span><span class="bk-need"><span class="tag ${it.need==="must"?"must":""}">${NEED_NAME[it.need]||"—"}</span></span><span class="bk-am num">${E(it.v)}</span></li>`).join("")).join(""):`<li class="empty">${all>0?"Все расходы этого периода оплачены.":"Расходов в этом периоде нет."}</li>`;
+}
+function printItems(){
+  const d=ui.itPrint;if(!d)return;
+  const now=new Date();
+  const rows=d.gs.length?d.gs.map(G=>`<tr class="pg"><td colspan="3">${esc(GNAME[G.g]||"Прочее")}</td><td class="am">${d.E(G.v)}</td></tr>`+
+    G.list.map(it=>`<tr><td></td><td>${esc(it.name)}${it.n>1?` × ${it.n}`:""}</td><td>${NEED_NAME[it.need]||"—"}</td><td class="am">${d.E(it.v)}</td></tr>`).join("")).join(""):`<tr><td colspan="4">Неоплаченных расходов в этом периоде нет.</td></tr>`;
+  const dv=Math.round(d.diff);
+  $("printArea").innerHTML=`<h1>Общий список расходов</h1>
+    <p class="pp">Период: ${fmtDate(d.from)} — ${fmtDate(d.to)} · только неоплаченные расходы · суммы в EUR по курсу НБРБ</p>
+    <p class="pp">Осталось оплатить <b>${d.E0(d.tot)}</b> · обязательные ${d.E0(d.bm)} · гибкие ${d.E0(d.tot-d.bm)} · Разница: <b class="${dv<0?"neg":"pos"}">${(dv>0?"+":dv<0?"−":"")+nf.format(Math.abs(dv))} EUR</b></p>
+    <table><thead><tr><th>Группа</th><th>Название</th><th>Вид</th><th class="am">Стоимость, €</th></tr></thead><tbody>${rows}</tbody></table>
+    <p class="pf">Выгружено ${fmtDate(ymd(now))} ${pad(now.getHours())}:${pad(now.getMinutes())}</p>`;
+  const oldTitle=document.title;
+  document.title="Расходы "+fmtDate(d.from)+" — "+fmtDate(d.to);
+  document.body.classList.add("printing");
+  const done=()=>{document.body.classList.remove("printing");document.title=oldTitle;window.removeEventListener("afterprint",done)};
+  window.addEventListener("afterprint",done);
+  setTimeout(()=>{window.print();setTimeout(()=>{if(!matchMedia("print").matches)done()},1500)},50);
 }
 function renderAgenda(P){
   const {y,m}=monthsShown[selMonth];const ev=eventsFor(y,m);
@@ -929,6 +970,7 @@ document.addEventListener("click",ev=>{
   switch(a){
     case"tab":selMonth=+b.dataset.i;ui.itMonth=selMonth;ui.editAmt=null;render();break;
     case"it-tab":ui.itMonth=+b.dataset.i;renderItems();break;
+    case"it-pdf":printItems();break;
     case"open-add":openAdd({type:b.dataset.type||"one"});break;
     case"close-add":closeAdd();break;
     case"f-del":$("fDel").hidden=true;$("fDelConfirm").hidden=false;break;
