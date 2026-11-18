@@ -269,7 +269,7 @@ form.f .field input,form.f .field select{background:var(--surface)}
 .map-panel .task-map{flex:1 1 auto;min-height:380px}
 .tasks-panel{display:flex;flex-direction:column;min-height:0}
 .tasks-panel .task-list{flex:1 1 0;min-height:220px;overflow-y:auto;overscroll-behavior:contain;padding-right:4px;scrollbar-width:thin}
-@media (max-width:860px){.duo{grid-template-columns:1fr}.tasks-panel .task-list{flex:none;max-height:360px;min-height:0}}
+@media (max-width:860px){.duo{grid-template-columns:minmax(0,1fr)}.tasks-panel .task-list{flex:none;max-height:360px;min-height:0}}
 .task-add{display:flex;gap:8px}
 .task-add input{flex:1;min-width:0;background:var(--sunk);border:1px solid var(--line);border-radius:8px;padding:9px 10px}
 .task-list{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column}
@@ -366,6 +366,15 @@ form.f .field input,form.f .field select{background:var(--surface)}
 .day-list .ag-row:last-child{border-bottom:0}
 .day-nav{display:flex;gap:6px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+/* Задачи и Общий список: на ступень мельче остальной страницы (заголовки блоков не трогаем) */
+.tasks-panel .task-title,.task-add input,.tasks-panel .btn.primary{font-size:13px}
+.tasks-panel .btn,.task-undo{font-size:12px}
+.task-place,.task-check{font-size:11px}
+.task-del{font-size:14px}
+.bk-item,.bk-group,.bk-diff-l{font-size:13px}
+.it-tools .btn,.it-tools .tab,.bk-diff{font-size:12px}
+.bk-items-head .label,.bk-need .tag{font-size:10px}
+.bk-diff b{font-size:14px}
 </style>
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-size:14px}img{max-width:100%}</style>
 <script src="config.js"></script>
@@ -411,7 +420,7 @@ form.f .field input,form.f .field select{background:var(--surface)}
 
   <div class="duo">
   <section class="panel tasks-panel">
-    <div class="panel-head"><h2>Задачи</h2><span class="muted num" style="font-size:13px" id="taskCount"></span></div>
+    <div class="panel-head"><h2>Задачи</h2><span class="muted num" style="font-size:12px" id="taskCount"></span></div>
     <form class="task-add" id="taskForm" autocomplete="off">
       <input id="taskInput" placeholder="Новая задача" aria-label="Новая задача" maxlength="300">
       <button class="btn place-btn" type="button" data-act="place-new" title="Добавить задачу с местом на карте" aria-label="Добавить с местом"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg><span>Место</span></button>
@@ -441,7 +450,7 @@ form.f .field input,form.f .field select{background:var(--surface)}
 
   <section class="panel">
     <div class="panel-head"><h2>Общий список расходов за период <span id="itPeriod"></span></h2><div class="it-tools"><div class="tabs" id="itTabs" role="tablist"></div><button type="button" class="btn pdf-btn" data-act="it-pdf">↓ Скачать PDF</button></div></div>
-    <div class="muted num" style="font-size:13px;margin:-6px 0 10px" id="itRange"></div>
+    <div class="muted num" style="font-size:12px;margin:-6px 0 10px" id="itRange"></div>
     <div class="bk-items-head"><span class="label">Название</span><span class="label bk-need">Вид</span><span class="label" style="text-align:right;white-space:nowrap">Стоимость<span class="lbl-cur">, €</span></span></div>
     <ul class="bk-items" id="bkItems"></ul>
   </section>
