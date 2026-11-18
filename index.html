@@ -309,7 +309,7 @@ form.f .field input,form.f .field select{background:var(--surface)}
 .it-diff.pos{color:var(--income)}
 .it-diff.neg{color:var(--danger)}
 .bk-items-head{display:grid;grid-template-columns:minmax(0,1fr) 130px 110px;gap:8px;padding-bottom:6px;border-bottom:1px solid var(--line)}
-.bk-items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.bk-items{list-style:none;margin:0;padding:0 4px 0 0;display:flex;flex-direction:column;position:relative;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
 .bk-item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
 .bk-item:last-child{border-bottom:0}
 .bk-group{display:grid;grid-template-columns:auto minmax(0,1fr) 130px 110px;gap:8px;align-items:center;padding:12px 0 6px;border-bottom:1px solid var(--line);font-weight:600;font-size:14px}
@@ -901,7 +901,12 @@ function renderItems(P){
   ui.itPrint={from,to,gs,tot,bm,diff,E0,E};
   $("bkItems").innerHTML=gs.length?gs.map(G=>`<li class="bk-group">${gdot(G.g)}<span class="bk-nm">${GNAME[G.g]||"Прочее"}</span><span></span><span class="bk-am num">${E(G.v)}</span></li>`+
     G.list.map(it=>`<li class="bk-item sub"><span class="bk-nm">${esc(it.name)}${it.n>1?` <span class="muted">× ${it.n}</span>`:""}</span><span class="bk-need"><span class="tag ${it.need==="must"?"must":""}">${NEED_NAME[it.need]||"—"}</span></span><span class="bk-am num">${E(it.v)}</span></li>`).join("")).join(""):`<li class="empty">${all>0?"Все расходы этого периода оплачены.":"Расходов в этом периоде нет."}</li>`;
+  fitItems();
 }
+/* Общий список: видно 10 строк, остальное прокручивается */
+function fitItems(){const ul=$("bkItems");ul.style.maxHeight="";const li=ul.children;
+  if(li.length>10)ul.style.maxHeight=(li[10].offsetTop-li[0].offsetTop)+"px"}
+window.addEventListener("resize",fitItems);
 function printItems(){
   const d=ui.itPrint;if(!d)return;
   const now=new Date();
